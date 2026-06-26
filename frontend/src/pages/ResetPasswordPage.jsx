@@ -1,30 +1,34 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 
 function ResetPasswordPage() {
-  const location = useLocation();
   const navigate = useNavigate();
   const [password, setPassword] = useState('');
+  const [token, setToken] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [token, setToken] = useState('');
+  const [tokenSubmitted, setTokenSubmitted] = useState(false);
 
-  useEffect(() => {
-    const hash = location.hash || window.location.hash;
-    const parts = hash.split('/');
-    const tokenIndex = parts.indexOf('reset-password');
-    if (tokenIndex !== -1 && parts[tokenIndex + 1]) {
-      setToken(parts[tokenIndex + 1]);
-    }
-  }, [location]);
+  const getTokenFromUrl = () => {
+    const hash = window.location.hash;
+    const match = hash.match(/reset-password\/(.+)/);
+    return match ? match[1] : '';
+  };
 
-  const handleSubmit = async (e) => {
+  const handleTokenSubmit = (e) => {
     e.preventDefault();
-    if (!token) {
-      setError('Invalid reset link');
-      return;
+    const urlToken = getTokenFromUrl();
+    if (urlToken) {
+      setToken(urlToken);
+      setTokenSubmitted(true);
+    } else {
+      setError('No reset token found in URL');
     }
+  };
+
+  const handleReset = async (e) => {
+    e.preventDefault();
     setError('');
     setLoading(true);
 
@@ -45,6 +49,15 @@ function ResetPasswordPage() {
     }
   };
 
+  // Check for token in URL on load
+  useState(() => {
+    const urlToken = getTokenFromUrl();
+    if (urlToken) {
+      setToken(urlToken);
+      setTokenSubmitted(true);
+    }
+  });
+
   return (
     <div className="bg-gray-900 text-white min-h-screen flex items-center justify-center px-6">
       <div className="max-w-md w-full">
@@ -58,8 +71,17 @@ function ResetPasswordPage() {
           <div className="bg-green-900/50 border border-green-700 text-green-300 px-4 py-3 rounded-lg mb-4 text-sm">{message}</div>
         )}
 
-        {!message && (
-          <form onSubmit={handleSubmit} className="space-y-5">
+        {!tokenSubmitted && (
+          <button
+            onClick={handleTokenSubmit}
+            className="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-medium transition-colors cursor-pointer"
+          >
+            Load Reset Token
+          </button>
+        )}
+
+        {tokenSubmitted && !message && (
+          <form onSubmit={handleReset} className="space-y-5">
             <input
               type="password"
               value={password}
