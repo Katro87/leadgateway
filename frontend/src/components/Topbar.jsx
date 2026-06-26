@@ -1,4 +1,15 @@
+import { useNavigate } from 'react-router-dom';
+
 function Topbar() {
+  const navigate = useNavigate();
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    navigate('/login');
+  };
+
   return (
     <header className="h-16 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-6">
       {/* Search */}
@@ -12,7 +23,6 @@ function Topbar() {
 
       {/* Right side */}
       <div className="flex items-center gap-4">
-        {/* Notifications */}
         <button className="text-gray-400 hover:text-white transition-colors relative cursor-pointer">
           🔔
           <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
@@ -21,12 +31,20 @@ function Topbar() {
         </button>
 
         {/* Profile */}
-        <button className="flex items-center gap-2 text-sm text-gray-300 hover:text-white transition-colors cursor-pointer">
-          <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center text-xs font-medium">
-            JD
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-sm text-gray-300">
+            <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center text-xs font-medium">
+              {user.name ? user.name.split(' ').map(n => n[0]).join('') : 'U'}
+            </div>
+            <span className="hidden sm:inline">{user.name || 'User'}</span>
           </div>
-          <span className="hidden sm:inline">John Doe</span>
-        </button>
+          <button
+            onClick={handleLogout}
+            className="text-gray-400 hover:text-white text-sm transition-colors cursor-pointer"
+          >
+            Logout
+          </button>
+        </div>
       </div>
     </header>
   )
