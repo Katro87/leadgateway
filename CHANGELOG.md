@@ -1,4 +1,11 @@
 # Changelog
+### v0.10.0 - Auth Protection & User Display ✅
+- Added ProtectedRoute component — redirects to login if no token
+- All dashboard routes now require authentication
+- Topbar shows logged-in user's name and initials
+- Logout button clears session and redirects to login
+- Built and deployed to leadgateway.tech
+
 ### v0.9.0 - Frontend-Backend Connection ✅
 - Created API helper (frontend/src/api/auth.js)
 - Signup page connected to backend API with form state, loading, error handling

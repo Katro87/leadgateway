@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:5000/api/users';
+const API_URL = 'http://206.189.85.232:5000/api/users';
 
 export const signupUser = async (name, email, password) => {
   const res = await fetch(`${API_URL}/signup`, {
