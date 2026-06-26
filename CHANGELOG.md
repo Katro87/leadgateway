@@ -1,4 +1,12 @@
 # Changelog
+### v0.9.0 - Frontend-Backend Connection ✅
+- Created API helper (frontend/src/api/auth.js)
+- Signup page connected to backend API with form state, loading, error handling
+- Login page connected to backend API
+- Token stored in localStorage after authentication
+- Successful auth redirects to dashboard
+- Error messages displayed for invalid credentials
+
 ### v0.8.0 - Backend Setup ✅
 - Initialized Node.js + Express backend in `/backend`
 - Installed express@4, mongoose, cors, dotenv, bcryptjs@2.4.3, jsonwebtoken
