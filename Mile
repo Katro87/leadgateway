@@ -1,0 +1,49 @@
+Milestone Breakdown
+Based on the project plan, here's our milestone structure:
+
+Phase 1 - Foundation (Current Phase)
+Milestone 1.1: Project initialization & folder structure
+
+Milestone 1.2: Install dependencies (React, Vite, Tailwind CSS)
+
+Milestone 1.3: Create dark theme & base layout
+
+Milestone 1.4: Build Landing Page
+
+Phase 2 - Authentication UI
+Milestone 2.1: Login UI
+
+Milestone 2.2: Signup UI
+
+Milestone 2.3: Forgot Password UI
+
+Milestone 2.4: Dashboard Layout with Sidebar & Topbar
+
+Phase 3 - Contacts
+Milestone 3.1: Contacts UI with dummy data
+
+Milestone 3.2: Contact Detail UI
+
+Milestone 3.3: Search & Filters
+
+Phase 4 - Dialer
+Milestone 4.1: Dial Pad UI
+
+Milestone 4.2: Recent Calls UI
+
+Milestone 4.3: Call Screen UI
+
+Phase 5 - SMS
+Milestone 5.1: SMS UI
+
+Milestone 5.2: Conversation UI
+
+Milestone 5.3: Compose UI
+
+Phase 6 - Additional Features
+Milestone 6.1: Call History
+
+Milestone 6.2: Voicemail
+
+Milestone 6.3: Settings & Profile
+
