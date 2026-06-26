@@ -1,4 +1,16 @@
 # Changelog
+### v0.11.0 - Backend Deployed to Production ✅
+- Deployed backend to DigitalOcean (206.189.85.232)
+- Installed Node.js, PM2, Nginx on server
+- Configured api.leadgateway.tech subdomain with DNS
+- Set up HTTPS with Let's Encrypt
+- Nginx reverse proxy to Express API
+- CORS configured for leadgateway.tech
+- MongoDB Atlas whitelisted for server IP (0.0.0.0/0)
+- PM2 auto-restart on server reboot
+- Frontend connected to live API
+- Full login/signup working in production
+
 ### v0.10.0 - Auth Protection & User Display ✅
 - Added ProtectedRoute component — redirects to login if no token
 - All dashboard routes now require authentication
