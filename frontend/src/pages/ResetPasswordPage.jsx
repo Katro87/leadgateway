@@ -1,16 +1,30 @@
-import { useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 
 function ResetPasswordPage() {
-  const { token } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
+  const [token, setToken] = useState('');
+
+  useEffect(() => {
+    const hash = location.hash || window.location.hash;
+    const parts = hash.split('/');
+    const tokenIndex = parts.indexOf('reset-password');
+    if (tokenIndex !== -1 && parts[tokenIndex + 1]) {
+      setToken(parts[tokenIndex + 1]);
+    }
+  }, [location]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!token) {
+      setError('Invalid reset link');
+      return;
+    }
     setError('');
     setLoading(true);
 
@@ -38,15 +52,10 @@ function ResetPasswordPage() {
         <p className="text-gray-400 mb-8 text-center">Enter your new password</p>
 
         {error && (
-          <div className="bg-red-900/50 border border-red-700 text-red-300 px-4 py-3 rounded-lg mb-4 text-sm">
-            {error}
-          </div>
+          <div className="bg-red-900/50 border border-red-700 text-red-300 px-4 py-3 rounded-lg mb-4 text-sm">{error}</div>
         )}
-
         {message && (
-          <div className="bg-green-900/50 border border-green-700 text-green-300 px-4 py-3 rounded-lg mb-4 text-sm">
-            {message}
-          </div>
+          <div className="bg-green-900/50 border border-green-700 text-green-300 px-4 py-3 rounded-lg mb-4 text-sm">{message}</div>
         )}
 
         {!message && (
