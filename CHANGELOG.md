@@ -1,4 +1,13 @@
 # Changelog
+### v0.8.0 - Backend Setup ✅
+- Initialized Node.js + Express backend in `/backend`
+- Installed express@4, mongoose, cors, dotenv, bcryptjs@2.4.3, jsonwebtoken
+- Connected to MongoDB Atlas (free M0 cluster)
+- Created User model with password hashing
+- Built auth routes: POST /signup, POST /login, GET /profile
+- JWT token generation (30-day expiry)
+- Fixed Mongoose pre-save hook (bcryptjs v3 incompatibility)
+- All endpoints tested and working
 
 ## v0.0.1 - Project Setup
 - Created Vite + React project in `frontend/`
