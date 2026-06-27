@@ -12,7 +12,13 @@ function ContactsPage() {
   const navigate = useNavigate()
 
   useEffect(() => { loadContacts(); }, []);
-
+  useEffect(() => {
+  const hash = window.location.hash;
+  const match = hash.match(/search=([^&]+)/);
+  if (match) {
+    setSearch(decodeURIComponent(match[1]));
+  }
+}, []);
   const loadContacts = async () => {
     try {
       const data = await getContacts();

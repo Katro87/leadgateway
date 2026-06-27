@@ -1,4 +1,8 @@
 # Changelog
+### v0.19.0 - UI Improvements ✅
+- Show/hide password toggle on Login and Signup pages
+- Export contacts to CSV file
+
 ### v0.18.0 - Live Messaging ✅
 - Message model with sender, recipient, text, direction
 - API: get conversations, get messages per contact, send message
