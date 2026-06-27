@@ -1,12 +1,11 @@
 import { Link, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Phone, Users, MessageSquare, Clock, Voicemail, Settings } from 'lucide-react'
+import { LayoutDashboard, Phone, Users, MessageSquare, Voicemail, Settings } from 'lucide-react'
 
 const navItems = [
   { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
   { name: 'Dialer', path: '/dialer', icon: Phone },
+  { name: 'Messages', path: '/dialer?tab=messages', icon: MessageSquare },
   { name: 'Contacts', path: '/contacts', icon: Users },
-  { name: 'Messages', path: '/messages', icon: MessageSquare },
-  { name: 'Call History', path: '/call-history', icon: Clock },
   { name: 'Voicemail', path: '/voicemail', icon: Voicemail },
   { name: 'Settings', path: '/settings', icon: Settings },
 ]
@@ -22,7 +21,7 @@ function Sidebar() {
 
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
-          const isActive = location.pathname === item.path
+          const isActive = location.pathname === item.path.split('?')[0]
           const Icon = item.icon
           return (
             <Link

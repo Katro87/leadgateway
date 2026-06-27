@@ -8,8 +8,6 @@ import DashboardPage from './pages/DashboardPage'
 import ContactsPage from './pages/ContactsPage'
 import ContactDetailPage from './pages/ContactDetailPage'
 import DialerPage from './pages/DialerPage'
-import MessagesPage from './pages/MessagesPage'
-import CallHistoryPage from './pages/CallHistoryPage'
 import VoicemailPage from './pages/VoicemailPage'
 import SettingsPage from './pages/SettingsPage'
 import NotFoundPage from './pages/NotFoundPage'
@@ -27,20 +25,16 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-        {/* Protected Dashboard Routes */}
         <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/contacts" element={<ContactsPage />} />
           <Route path="/contacts/:id" element={<ContactDetailPage />} />
           <Route path="/dialer" element={<DialerPage />} />
-          <Route path="/messages" element={<MessagesPage />} />
-          <Route path="/call-history" element={<CallHistoryPage />} />
           <Route path="/voicemail" element={<VoicemailPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
         </Route>
 
-        {/* 404 Catch-all */}
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </HashRouter>
