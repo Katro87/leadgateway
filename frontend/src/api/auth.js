@@ -1,35 +1,10 @@
-const API_URL = 'https://api.leadgateway.tech/api/users';
+import { apiFetch } from './index';
 
-export const signupUser = async (name, email, password) => {
-  const res = await fetch(`${API_URL}/signup`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, email, password }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message);
-  return data;
-};
+export const signupUser = (name, email, password) =>
+  apiFetch('/users/signup', { method: 'POST', body: JSON.stringify({ name, email, password }) });
 
-export const loginUser = async (email, password) => {
-  const res = await fetch(`${API_URL}/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message);
-  return data;
-};
+export const loginUser = (email, password) =>
+  apiFetch('/users/login', { method: 'POST', body: JSON.stringify({ email, password }) });
 
-export const getProfile = async (token) => {
-  const res = await fetch(`${API_URL}/profile`, {
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message);
-  return data;
-};
+export const getProfile = () =>
+  apiFetch('/users/profile');

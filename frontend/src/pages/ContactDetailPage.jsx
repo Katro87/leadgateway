@@ -9,6 +9,8 @@ function ContactDetailPage() {
   const [loading, setLoading] = useState(true)
   const [showEdit, setShowEdit] = useState(false)
   const [editForm, setEditForm] = useState({ name: '', company: '', email: '', phone: '', tags: '', notes: '' })
+  const [savingNotes, setSavingNotes] = useState(false)
+  const [notesMsg, setNotesMsg] = useState('')
 
   useEffect(() => { loadContact(); }, [id]);
 
@@ -57,6 +59,21 @@ function ContactDetailPage() {
       setShowEdit(false);
     } catch (err) {
       console.error('Failed to update:', err);
+    }
+  };
+
+  const handleSaveNotes = async () => {
+    setSavingNotes(true);
+    setNotesMsg('');
+    try {
+      const data = await updateContact(id, { notes: editForm.notes });
+      setContact(data);
+      setNotesMsg('Saved!');
+      setTimeout(() => setNotesMsg(''), 2000);
+    } catch (err) {
+      setNotesMsg('Failed to save');
+    } finally {
+      setSavingNotes(false);
     }
   };
 
@@ -112,11 +129,26 @@ function ContactDetailPage() {
       </div>
 
       <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
-        <h3 className="text-lg font-semibold mb-4">Notes</h3>
-        <p className="text-gray-500 text-sm">{contact.notes || 'No notes yet.'}</p>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Notes</h3>
+          {notesMsg && <span className="text-xs text-green-400">{notesMsg}</span>}
+        </div>
+        <textarea
+          value={editForm.notes}
+          onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+          placeholder="Add notes about this contact..."
+          className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 resize-none"
+          rows="4"
+        />
+        <button
+          onClick={handleSaveNotes}
+          disabled={savingNotes}
+          className="mt-3 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer disabled:opacity-50"
+        >
+          {savingNotes ? 'Saving...' : 'Save Notes'}
+        </button>
       </div>
 
-      {/* Edit Modal */}
       {showEdit && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 w-full max-w-md">
