@@ -1,4 +1,11 @@
 # Changelog
+### v0.18.0 - Live Messaging ✅
+- Message model with sender, recipient, text, direction
+- API: get conversations, get messages per contact, send message
+- Messages page shows contact list from real contacts
+- Click contact opens chat with message history
+- Send message updates in real time
+
 ### v0.17.0 - Live Dashboard Stats ✅
 - Dashboard fetches real stats from API
 - Contact count shows actual number from database
