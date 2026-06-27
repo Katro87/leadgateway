@@ -17,14 +17,14 @@ function PasswordInput({ label, value, onChange, placeholder, error }) {
   const [show, setShow] = useState(false)
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{label}</label>
+      <label className="block text-sm font-medium text-gray-300 mb-2">{label}</label>
       <div className="relative">
         <input type={show ? 'text' : 'password'} value={value} onChange={onChange} placeholder={placeholder}
-          className={`w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-2.5 pr-12 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 ${
-            error ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+          className={`w-full bg-gray-700 border rounded-lg px-4 py-2.5 pr-12 text-sm text-white focus:outline-none focus:border-blue-500 ${
+            error ? 'border-red-500' : 'border-gray-600'
           }`} />
         <button type="button" onClick={() => setShow(!show)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors cursor-pointer">
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors cursor-pointer">
           {show ? <EyeOff size={18} /> : <Eye size={18} />}
         </button>
       </div>
@@ -119,19 +119,19 @@ function SettingsPage() {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Settings</h2>
-        <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Manage your preferences</p>
+        <h2 className="text-2xl font-bold text-white">Settings</h2>
+        <p className="text-gray-400 text-sm mt-1">Manage your preferences</p>
       </div>
 
-      <div className="flex gap-1 border-b border-gray-200 dark:border-gray-700">
+      <div className="flex gap-1 border-b border-gray-700">
         {tabs.map((tab) => {
           const Icon = tab.icon
           return (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors cursor-pointer border-b-2 -mb-px ${
                 activeTab === tab.id
-                  ? 'border-blue-500 text-blue-600 dark:text-white'
-                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white'
+                  ? 'border-blue-500 text-white'
+                  : 'border-transparent text-gray-400 hover:text-white'
               }`}>
               <Icon size={16} />{tab.name}
             </button>
@@ -140,8 +140,8 @@ function SettingsPage() {
       </div>
 
       {activeTab === 'password' && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Change Password</h3>
+        <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 space-y-4">
+          <h3 className="text-lg font-semibold text-white">Change Password</h3>
           <PasswordInput label="Current Password" value={currentPassword} onChange={(e) => { setCurrentPassword(e.target.value); markChanged() }} error={errors.currentPassword} />
           <PasswordInput label="New Password" value={newPassword} onChange={(e) => { setNewPassword(e.target.value); markChanged() }} placeholder="Min. 6 characters" error={errors.newPassword} />
           <PasswordInput label="Confirm New Password" value={confirmPassword} onChange={(e) => { setConfirmPassword(e.target.value); markChanged() }} placeholder="Re-enter new password" error={errors.confirmPassword} />
@@ -149,14 +149,14 @@ function SettingsPage() {
       )}
 
       {activeTab === 'notifications' && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Notification Preferences</h3>
+        <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 space-y-4">
+          <h3 className="text-lg font-semibold text-white">Notification Preferences</h3>
           {Object.entries(notifications).map(([key, val]) => (
             <div key={key} className="flex items-center justify-between py-2">
-              <span className="text-sm text-gray-700 dark:text-gray-300 capitalize">{key.replace(/([A-Z])/g, ' $1')} notifications</span>
+              <span className="text-sm text-gray-300 capitalize">{key.replace(/([A-Z])/g, ' $1')} notifications</span>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input type="checkbox" checked={val} onChange={(e) => { setNotifications({ ...notifications, [key]: e.target.checked }); markChanged() }} className="sr-only peer" />
-                <div className="w-9 h-5 bg-gray-300 dark:bg-gray-600 peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                <div className="w-9 h-5 bg-gray-600 peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
               </label>
             </div>
           ))}
@@ -164,18 +164,18 @@ function SettingsPage() {
       )}
 
       {activeTab === 'preferences' && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Call Preferences</h3>
+        <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 space-y-4">
+          <h3 className="text-lg font-semibold text-white">Call Preferences</h3>
           {[
             { key: 'blockUnknown', label: 'Block unknown callers' },
             { key: 'hideCallerId', label: 'Hide caller ID on outgoing calls' },
             { key: 'defaultVoicemail', label: 'Use default voicemail greeting' },
           ].map(({ key, label }) => (
             <div key={key} className="flex items-center justify-between py-2">
-              <span className="text-sm text-gray-700 dark:text-gray-300">{label}</span>
+              <span className="text-sm text-gray-300">{label}</span>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input type="checkbox" checked={preferences[key]} onChange={(e) => { setPreferences({ ...preferences, [key]: e.target.checked }); markChanged() }} className="sr-only peer" />
-                <div className="w-9 h-5 bg-gray-300 dark:bg-gray-600 peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                <div className="w-9 h-5 bg-gray-600 peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
               </label>
             </div>
           ))}
@@ -183,9 +183,9 @@ function SettingsPage() {
       )}
 
       {activeTab === 'billing' && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-5">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Billing</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Free Plan — No charges</p>
+        <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 space-y-5">
+          <h3 className="text-lg font-semibold text-white">Billing</h3>
+          <p className="text-sm text-gray-400">Free Plan — No charges</p>
         </div>
       )}
 
@@ -196,7 +196,7 @@ function SettingsPage() {
             <Check size={16} /> {saving ? 'Saving...' : 'Save All Changes'}
           </button>
           <button onClick={handleCancel}
-            className="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 px-6 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer flex items-center gap-2">
+            className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-6 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer flex items-center gap-2">
             <X size={16} /> Cancel
           </button>
         </div>
