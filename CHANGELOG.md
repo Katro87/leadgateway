@@ -1,4 +1,11 @@
 # Changelog
+### v0.14.0 - Add Contact Form ✅
+- Add Contact modal with form (name, company, email, phone, tags)
+- Tags entered as comma-separated values
+- Form validation (name required)
+- New contact saved to MongoDB via API
+- Contact list refreshes after adding
+
 ### v0.13.0 - Contacts CRUD with Real API ✅
 - Created Contact model with MongoDB (user, name, company, email, phone, tags, favorite, notes)
 - Built contact API routes: GET all, GET by ID, POST create, PUT update, DELETE
