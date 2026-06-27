@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { signupUser } from '../api/auth';
+import { ArrowLeft, User, Mail, Lock, Eye, EyeOff, AlertCircle, UserPlus } from 'lucide-react';
 
 function SignupPage() {
   const [name, setName] = useState('');
@@ -15,7 +16,6 @@ function SignupPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
-
     try {
       const data = await signupUser(name, email, password);
       localStorage.setItem('token', data.token);
@@ -29,10 +29,11 @@ function SignupPage() {
   };
 
   return (
-    <div className="bg-gray-900 text-white min-h-screen flex">
-      <Link to="/" className="absolute top-6 left-6 text-gray-400 hover:text-white text-sm flex items-center gap-1 z-10">
-  ← Back
-</Link>
+    <div className="bg-gray-900 text-white min-h-screen flex relative">
+      <Link to="/" className="absolute top-6 left-6 text-gray-400 hover:text-white text-sm flex items-center gap-1 z-10 transition-colors">
+        <ArrowLeft size={16} /> Back
+      </Link>
+
       <div className="hidden lg:flex flex-col justify-center items-center w-1/2 bg-gray-800 px-16">
         <h1 className="text-4xl font-bold mb-4">LeadGateway</h1>
         <p className="text-gray-400 text-lg text-center max-w-sm">
@@ -46,71 +47,51 @@ function SignupPage() {
           <p className="text-gray-400 mb-8">Create your free account</p>
 
           {error && (
-            <div className="bg-red-900/50 border border-red-700 text-red-300 px-4 py-3 rounded-lg mb-4 text-sm">
-              {error}
+            <div className="bg-red-900/30 border border-red-700/50 text-red-400 px-4 py-3 rounded-lg mb-4 text-sm flex items-center gap-2">
+              <AlertCircle size={16} /> {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Full Name</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="John Smith"
-                required
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
-              />
+              <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
+                <User size={14} /> Full Name
+              </label>
+              <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="John Smith" required
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors" />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@company.com"
-                required
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
-              />
+              <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
+                <Mail size={14} /> Email
+              </label>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" required
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors" />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Password</label>
+              <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
+                <Lock size={14} /> Password
+              </label>
               <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Min. 6 characters"
-                  required
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 pr-12 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-lg cursor-pointer"
-                >
-                  {showPassword ? '🙈' : '👁️'}
+                <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min. 6 characters" required
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 pr-12 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors" />
+                <button type="button" onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors cursor-pointer">
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-medium transition-colors cursor-pointer disabled:opacity-50"
-            >
-              {loading ? 'Creating account...' : 'Create Account'}
+            <button type="submit" disabled={loading}
+              className="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-medium transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2">
+              <UserPlus size={18} /> {loading ? 'Creating account...' : 'Create Account'}
             </button>
           </form>
 
           <p className="text-center text-sm text-gray-400 mt-6">
             Already have an account?{' '}
-            <Link to="/login" className="text-blue-500 hover:text-blue-400 transition-colors">
-              Log in
-            </Link>
+            <Link to="/login" className="text-blue-500 hover:text-blue-400 transition-colors">Log in</Link>
           </p>
         </div>
       </div>

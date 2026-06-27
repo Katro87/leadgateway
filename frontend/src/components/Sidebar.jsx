@@ -1,13 +1,14 @@
 import { Link, useLocation } from 'react-router-dom'
+import { LayoutDashboard, Phone, Users, MessageSquare, Clock, Voicemail, Settings } from 'lucide-react'
 
 const navItems = [
-  { name: 'Dashboard', path: '/dashboard', icon: '📊' },
-  { name: 'Dialer', path: '/dialer', icon: '📞' },
-  { name: 'Contacts', path: '/contacts', icon: '👤' },
-  { name: 'Messages', path: '/messages', icon: '💬' },
-  { name: 'Call History', path: '/call-history', icon: '📋' },
-  { name: 'Voicemail', path: '/voicemail', icon: '📼' },
-  { name: 'Settings', path: '/settings', icon: '⚙️' },
+  { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+  { name: 'Dialer', path: '/dialer', icon: Phone },
+  { name: 'Contacts', path: '/contacts', icon: Users },
+  { name: 'Messages', path: '/messages', icon: MessageSquare },
+  { name: 'Call History', path: '/call-history', icon: Clock },
+  { name: 'Voicemail', path: '/voicemail', icon: Voicemail },
+  { name: 'Settings', path: '/settings', icon: Settings },
 ]
 
 function Sidebar() {
@@ -15,15 +16,14 @@ function Sidebar() {
 
   return (
     <aside className="w-60 bg-gray-800 border-r border-gray-700 flex flex-col h-screen">
-      {/* Logo */}
       <div className="px-6 py-5 border-b border-gray-700">
-        <h1 className="text-xl font-bold">LeadGateway</h1>
+        <h1 className="text-xl font-bold text-white">LeadGateway</h1>
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path
+          const Icon = item.icon
           return (
             <Link
               key={item.name}
@@ -34,7 +34,7 @@ function Sidebar() {
                   : 'text-gray-400 hover:text-white hover:bg-gray-700'
               }`}
             >
-              <span>{item.icon}</span>
+              <Icon size={18} />
               {item.name}
             </Link>
           )
