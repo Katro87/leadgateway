@@ -50,14 +50,6 @@ function DialerPage() {
     <div className="flex h-full -m-6">
       {/* LEFT PANE */}
       <div className="w-80 bg-gray-800 border-r border-gray-700 flex flex-col">
-        <div className="p-4 border-b border-gray-700">
-          <div className="flex gap-1">
-            <button onClick={() => setActiveLeftTab('calls')}
-              className={`flex-1 py-2 text-xs font-medium rounded-lg capitalize transition-colors cursor-pointer ${activeLeftTab === 'calls' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'}`}>Calls</button>
-            <button onClick={() => setActiveLeftTab('messages')}
-              className={`flex-1 py-2 text-xs font-medium rounded-lg capitalize transition-colors cursor-pointer ${activeLeftTab === 'messages' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'}`}>Messages</button>
-          </div>
-        </div>
         <div className="flex-1 overflow-y-auto">
           {activeLeftTab === 'calls'
             ? communications.map((c) => {
@@ -93,7 +85,7 @@ function DialerPage() {
                       </div>
                     </button>
                     <button onClick={(e) => { e.stopPropagation(); handleDialNumber(c.number); }}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-white transition-all cursor-pointer bg-gray-800 p-1.5 rounded-full">
+                      className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-white transition-all cursor-pointer bg-gray-700 p-1.5 rounded-full">
                       <Phone size={16} />
                     </button>
                   </div>
