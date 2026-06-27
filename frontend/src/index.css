@@ -26,6 +26,12 @@ html.light nav a.hover\:bg-gray-700:hover {
 html.light nav a.hover\:text-white:hover {
   color: #111827;
 }
+html.light .hover\:bg-gray-700:hover {
+  background: #e5e7eb;
+}
+html.light .hover\:text-white:hover {
+  color: #111827;
+}
 @keyframes slideIn {
   from { transform: translateX(100%); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }
