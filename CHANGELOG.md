@@ -1,4 +1,11 @@
 # Changelog
+### v0.12.0 - Forgot Password API ✅
+- Forgot password endpoint generates reset token
+- Reset password endpoint verifies token and updates password
+- Token expires after 1 hour
+- Frontend pages for forgot and reset password created
+- Email integration pending (SendGrid)
+
 ### v0.11.0 - Backend Deployed to Production ✅
 - Deployed backend to DigitalOcean (206.189.85.232)
 - Installed Node.js, PM2, Nginx on server
