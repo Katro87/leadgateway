@@ -1,4 +1,16 @@
 # Changelog
+### v0.17.0 - Live Dashboard Stats ✅
+- Dashboard fetches real stats from API
+- Contact count shows actual number from database
+- Welcome message shows user's actual name
+- Quick action buttons navigate to correct pages
+
+### v0.16.0 - Settings Save ✅
+- Profile tab saves name and email to API
+- Password tab updates password via API
+- Added updateProfile endpoint to backend
+- Success/error messages for form submissions
+
 ### v0.15.0 - Edit Contact ✅
 - Edit Contact modal with all fields (name, company, email, phone, tags, notes)
 - Pre-fills form with existing contact data
