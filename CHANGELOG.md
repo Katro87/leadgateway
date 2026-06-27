@@ -1,4 +1,10 @@
 # Changelog
+### v0.20.0 - Error Handling & Rate Limiting ✅
+- Global API error handler with auto-redirect on session expiry
+- Centralized API fetch function (apiFetch)
+- Rate limiting: 100 requests per 15 minutes per IP
+- Proper error messages for all API failures
+
 ### v0.19.0 - UI Improvements ✅
 - Show/hide password toggle on Login and Signup pages
 - Export contacts to CSV file
