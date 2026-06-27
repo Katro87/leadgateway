@@ -40,6 +40,18 @@ function ContactsPage() {
     }
   };
 
+  const exportCSV = () => {
+    const headers = ['Name', 'Company', 'Email', 'Phone', 'Tags'];
+    const rows = contactsList.map(c => [c.name, c.company, c.email, c.phone, (c.tags || []).join('; ')]);
+    const csv = [headers, ...rows].map(row => row.map(field => `"${field || ''}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'contacts.csv';
+    a.click();
+  };
+
   const allTags = ['All', ...new Set(contactsList.flatMap((c) => c.tags || []))]
 
   const filteredContacts = contactsList.filter((contact) => {
@@ -67,27 +79,26 @@ function ContactsPage() {
           <h2 className="text-2xl font-bold">Contacts</h2>
           <p className="text-gray-400 text-sm mt-1">{contactsList.length} total contacts</p>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="bg-blue-600 hover:bg-blue-700 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer"
-        >
-          + Add Contact
-        </button>
+        <div className="flex gap-2">
+          <button onClick={exportCSV}
+            className="bg-gray-700 hover:bg-gray-600 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer">
+            📥 Export
+          </button>
+          <button onClick={() => setShowModal(true)}
+            className="bg-blue-600 hover:bg-blue-700 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer">
+            + Add Contact
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
-        <input
-          type="text"
-          placeholder="Search by name, company, email..."
-          value={search}
+        <input type="text" placeholder="Search by name, company, email..." value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
-        />
+          className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors" />
         <div className="flex gap-2 flex-wrap">
           {allTags.map((tag) => (
             <button key={tag} onClick={() => setSelectedTag(tag)}
-              className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer ${selectedTag === tag ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white border border-gray-700'}`}
-            >{tag}</button>
+              className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer ${selectedTag === tag ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white border border-gray-700'}`}>{tag}</button>
           ))}
         </div>
       </div>
@@ -137,7 +148,6 @@ function ContactsPage() {
         </div>
       )}
 
-      {/* Add Contact Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 w-full max-w-md">
@@ -159,13 +169,9 @@ function ContactsPage() {
                 onChange={(e) => setNewContact({ ...newContact, tags: e.target.value })}
                 className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-blue-500" />
               <div className="flex gap-3 pt-2">
-                <button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer">
-                  Save Contact
-                </button>
+                <button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer">Save Contact</button>
                 <button type="button" onClick={() => setShowModal(false)}
-                  className="flex-1 bg-gray-700 hover:bg-gray-600 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer">
-                  Cancel
-                </button>
+                  className="flex-1 bg-gray-700 hover:bg-gray-600 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer">Cancel</button>
               </div>
             </form>
           </div>
