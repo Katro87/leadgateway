@@ -20,7 +20,7 @@ function SignupPage() {
       const data = await signupUser(name, email, password);
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data));
-      navigate('/dashboard');
+      setTimeout(() => navigate('/dashboard'), 500);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -30,6 +30,9 @@ function SignupPage() {
 
   return (
     <div className="bg-gray-900 text-white min-h-screen flex">
+      <Link to="/" className="absolute top-6 left-6 text-gray-400 hover:text-white text-sm flex items-center gap-1 z-10">
+  ← Back
+</Link>
       <div className="hidden lg:flex flex-col justify-center items-center w-1/2 bg-gray-800 px-16">
         <h1 className="text-4xl font-bold mb-4">LeadGateway</h1>
         <p className="text-gray-400 text-lg text-center max-w-sm">
