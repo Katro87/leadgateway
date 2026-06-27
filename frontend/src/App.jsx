@@ -15,6 +15,7 @@ import SettingsPage from './pages/SettingsPage'
 import NotFoundPage from './pages/NotFoundPage'
 import DashboardLayout from './layouts/DashboardLayout'
 import ProtectedRoute from './components/ProtectedRoute'
+import ProfilePage from './pages/ProfilePage'
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
           <Route path="/call-history" element={<CallHistoryPage />} />
           <Route path="/voicemail" element={<VoicemailPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
         </Route>
 
         {/* 404 Catch-all */}
