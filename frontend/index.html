@@ -6,6 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>LeadGateway</title>
     <script>
+  if (localStorage.getItem('theme') === 'light') {
+    document.documentElement.classList.add('light');
+  }
+</script>
+    <script>
       (function() {
         var redirect = sessionStorage.redirect;
         delete sessionStorage.redirect;

@@ -38,8 +38,8 @@ function CallHistoryPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Call History</h2>
-        <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">{callHistory.length} total calls</p>
+        <h2 className="text-2xl font-bold text-white">Call History</h2>
+        <p className="text-gray-400 text-sm mt-1">{callHistory.length} total calls</p>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
@@ -47,7 +47,7 @@ function CallHistoryPage() {
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input type="text" placeholder="Search by name or number..." value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg pl-10 pr-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors" />
+            className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors" />
         </div>
         <div className="flex gap-2">
           {types.map((type) => (
@@ -55,16 +55,16 @@ function CallHistoryPage() {
               className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors cursor-pointer capitalize ${
                 filter === type
                   ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white border border-gray-200 dark:border-gray-700'
+                  : 'bg-gray-800 text-gray-400 hover:text-white border border-gray-700'
               }`}>{type}</button>
           ))}
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-gray-200 dark:border-gray-700 text-left text-sm text-gray-500 dark:text-gray-400">
+            <tr className="border-b border-gray-700 text-left text-sm text-gray-400">
               <th className="px-5 py-3 font-medium">Contact</th>
               <th className="px-5 py-3 font-medium hidden sm:table-cell">Number</th>
               <th className="px-5 py-3 font-medium hidden md:table-cell">Duration</th>
@@ -76,16 +76,16 @@ function CallHistoryPage() {
             {filteredCalls.map((call) => {
               const { Icon, color } = typeIcons[call.type] || typeIcons.outgoing
               return (
-                <tr key={call.id} className="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
+                <tr key={call.id} className="border-b border-gray-700/50 hover:bg-gray-750 transition-colors">
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
                       <Icon size={18} className={color} />
-                      <span className="font-medium text-sm text-gray-900 dark:text-white">{call.name}</span>
+                      <span className="font-medium text-sm text-white">{call.name}</span>
                     </div>
                   </td>
-                  <td className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400 hidden sm:table-cell">{call.number}</td>
-                  <td className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400 hidden md:table-cell">{call.duration}</td>
-                  <td className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400 hidden lg:table-cell">{call.date} • {call.time}</td>
+                  <td className="px-5 py-4 text-sm text-gray-400 hidden sm:table-cell">{call.number}</td>
+                  <td className="px-5 py-4 text-sm text-gray-400 hidden md:table-cell">{call.duration}</td>
+                  <td className="px-5 py-4 text-sm text-gray-400 hidden lg:table-cell">{call.date} • {call.time}</td>
                   <td className="px-5 py-4">
                     <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${resultStyles[call.result] || ''}`}>
                       {call.result}

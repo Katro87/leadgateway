@@ -6,6 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>LeadGateway</title>
     <script>
+  if (localStorage.getItem('theme') === 'light') {
+    document.documentElement.classList.add('light');
+  }
+</script>
+    <script>
       (function() {
         var redirect = sessionStorage.redirect;
         delete sessionStorage.redirect;
@@ -14,8 +19,8 @@
         }
       })();
     </script>
-    <script type="module" crossorigin src="/assets/index-AZSUN6qp.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-Dt3kLEI9.css">
+    <script type="module" crossorigin src="/assets/index-DlUDnJps.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-B8T0XySB.css">
   </head>
   <body>
     <div id="root"></div>
