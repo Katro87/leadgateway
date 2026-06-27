@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Key, Bell, Sliders, CreditCard, Check, X, AlertCircle } from 'lucide-react'
+import { Key, Bell, Sliders, CreditCard, Check, X, AlertCircle, Eye, EyeOff } from 'lucide-react'
 
 function Toast({ message, type, onClose }) {
   return (
@@ -9,6 +9,26 @@ function Toast({ message, type, onClose }) {
       {type === 'success' ? <Check size={18} /> : <AlertCircle size={18} />}
       <span className="text-sm font-medium">{message}</span>
       <button onClick={onClose} className="ml-2 hover:opacity-80"><X size={16} /></button>
+    </div>
+  )
+}
+
+function PasswordInput({ label, value, onChange, placeholder, error }) {
+  const [show, setShow] = useState(false)
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{label}</label>
+      <div className="relative">
+        <input type={show ? 'text' : 'password'} value={value} onChange={onChange} placeholder={placeholder}
+          className={`w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-2.5 pr-12 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 ${
+            error ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+          }`} />
+        <button type="button" onClick={() => setShow(!show)}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors cursor-pointer">
+          {show ? <EyeOff size={18} /> : <Eye size={18} />}
+        </button>
+      </div>
+      {error && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle size={12} />{error}</p>}
     </div>
   )
 }
@@ -52,7 +72,6 @@ function SettingsPage() {
 
   const handleSaveAll = async () => {
     if (newPassword && !validatePassword()) return
-
     setSaving(true)
     try {
       const token = localStorage.getItem('token')
@@ -123,30 +142,9 @@ function SettingsPage() {
       {activeTab === 'password' && (
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-4">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Change Password</h3>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Current Password</label>
-            <input type="password" value={currentPassword} onChange={(e) => { setCurrentPassword(e.target.value); markChanged() }}
-              className={`w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 ${
-                errors.currentPassword ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-              }`} />
-            {errors.currentPassword && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle size={12} />{errors.currentPassword}</p>}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">New Password</label>
-            <input type="password" value={newPassword} onChange={(e) => { setNewPassword(e.target.value); markChanged() }}
-              placeholder="Min. 6 characters" className={`w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 ${
-                errors.newPassword ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-              }`} />
-            {errors.newPassword && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle size={12} />{errors.newPassword}</p>}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Confirm New Password</label>
-            <input type="password" value={confirmPassword} onChange={(e) => { setConfirmPassword(e.target.value); markChanged() }}
-              placeholder="Re-enter new password" className={`w-full bg-gray-50 dark:bg-gray-700 border rounded-lg px-4 py-2.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 ${
-                errors.confirmPassword ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
-              }`} />
-            {errors.confirmPassword && <p className="text-red-500 text-xs mt-1 flex items-center gap-1"><AlertCircle size={12} />{errors.confirmPassword}</p>}
-          </div>
+          <PasswordInput label="Current Password" value={currentPassword} onChange={(e) => { setCurrentPassword(e.target.value); markChanged() }} error={errors.currentPassword} />
+          <PasswordInput label="New Password" value={newPassword} onChange={(e) => { setNewPassword(e.target.value); markChanged() }} placeholder="Min. 6 characters" error={errors.newPassword} />
+          <PasswordInput label="Confirm New Password" value={confirmPassword} onChange={(e) => { setConfirmPassword(e.target.value); markChanged() }} placeholder="Re-enter new password" error={errors.confirmPassword} />
         </div>
       )}
 
