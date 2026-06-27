@@ -1,4 +1,10 @@
 # Changelog
+### v0.15.0 - Edit Contact ✅
+- Edit Contact modal with all fields (name, company, email, phone, tags, notes)
+- Pre-fills form with existing contact data
+- Updates contact via API and refreshes view
+- Notes field added to contact model and UI
+
 ### v0.14.0 - Add Contact Form ✅
 - Add Contact modal with form (name, company, email, phone, tags)
 - Tags entered as comma-separated values
