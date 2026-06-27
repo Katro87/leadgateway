@@ -1,36 +1,10 @@
-import { useState, useEffect } from 'react'
-import { Phone, PhoneOff, Mic, MicOff, Pause, Keyboard, UserPlus, MessageSquare, ArrowUpRight, ArrowDownLeft, PhoneMissed, ChevronDown, Send, Paperclip, MoreVertical, User, X, Check } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Phone, PhoneOff, Mic, MicOff, Pause, Keyboard, UserPlus, MessageSquare, ArrowUpRight, ArrowDownLeft, PhoneMissed, ChevronDown, Send, Paperclip, MoreVertical, User, X } from 'lucide-react'
 import { communications, formatTimeAgo, formatCallTime } from '../data/communications'
 
 const typeIcon = { incoming: ArrowDownLeft, outgoing: ArrowUpRight, missed: PhoneMissed }
 const typeColor = { incoming: 'text-green-400', outgoing: 'text-blue-400', missed: 'text-red-400' }
 const keys = [['1', '2', '3'], ['4', '5', '6'], ['7', '8', '9'], ['*', '0', '#']]
-
-function DropdownMenu({ isSaved, onSave, onEdit, onMessage, onBlock, onDelete, onClose }) {
-  return (
-    <div className="absolute right-0 top-8 w-44 bg-gray-800 border border-gray-700 rounded-xl shadow-lg py-1 z-50">
-      {isSaved ? (
-        <button onClick={() => { onEdit(); onClose(); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center gap-2">
-          <User size={14} /> Edit Contact
-        </button>
-      ) : (
-        <button onClick={() => { onSave(); onClose(); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center gap-2">
-          <UserPlus size={14} /> Save Contact
-        </button>
-      )}
-      <button onClick={() => { onMessage(); onClose(); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center gap-2">
-        <MessageSquare size={14} /> Message
-      </button>
-      <button onClick={() => { onBlock(); onClose(); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center gap-2">
-        🚫 Block
-      </button>
-      <hr className="border-gray-700 my-1" />
-      <button onClick={() => { onDelete(); onClose(); }} className="w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-gray-700 transition-colors flex items-center gap-2">
-        🗑️ Delete
-      </button>
-    </div>
-  )
-}
 
 function DialerPage() {
   const [activeLeftTab, setActiveLeftTab] = useState('calls')
@@ -41,16 +15,29 @@ function DialerPage() {
   const [selectedContact, setSelectedContact] = useState(null)
   const [messageText, setMessageText] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef(null)
+  const menuTimeout = useRef(null)
   const user = JSON.parse(localStorage.getItem('user') || '{}')
+
   useEffect(() => {
-  const hash = window.location.hash;
-  const match = hash.match(/tab=(\w+)/);
-  if (match && match[1] === 'messages') setActiveLeftTab('messages');
-}, []);
+    const hash = window.location.hash;
+    const match = hash.match(/tab=(\w+)/);
+    if (match && match[1] === 'messages') setActiveLeftTab('messages');
+  }, []);
+
+  const handleMenuEnter = () => {
+    if (menuTimeout.current) clearTimeout(menuTimeout.current);
+    setMenuOpen(true);
+  };
+  const handleMenuLeave = () => {
+    menuTimeout.current = setTimeout(() => setMenuOpen(false), 2000);
+  };
+
   const handleKeyPress = (v) => setNumber((p) => p + v)
   const handleCall = () => { if (number.trim()) setIsCallActive(true) }
   const handleHangup = () => { setIsCallActive(false); setNumber(''); setShowKeypad(false); setIsMuted(false) }
   const handleSendMessage = () => { if (messageText.trim()) { setMessageText('') } }
+  const handleDialNumber = (num) => { setNumber(num); setSelectedContact(null) }
 
   const unreadMessages = 1; const missedCalls = 2; const newVoicemails = 2;
   const notificationParts = [];
@@ -65,17 +52,16 @@ function DialerPage() {
       <div className="w-80 bg-gray-800 border-r border-gray-700 flex flex-col">
         <div className="p-4 border-b border-gray-700">
           <div className="flex gap-1">
-            {['calls', 'messages'].map((tab) => (
-              <button key={tab} onClick={() => setActiveLeftTab(tab)}
-                className={`flex-1 py-2 text-xs font-medium rounded-lg capitalize transition-colors cursor-pointer ${activeLeftTab === tab ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'}`}>{tab}</button>
-            ))}
+            <button onClick={() => setActiveLeftTab('calls')}
+              className={`flex-1 py-2 text-xs font-medium rounded-lg capitalize transition-colors cursor-pointer ${activeLeftTab === 'calls' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'}`}>Calls</button>
+            <button onClick={() => setActiveLeftTab('messages')}
+              className={`flex-1 py-2 text-xs font-medium rounded-lg capitalize transition-colors cursor-pointer ${activeLeftTab === 'messages' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'}`}>Messages</button>
           </div>
         </div>
         <div className="flex-1 overflow-y-auto">
           {activeLeftTab === 'calls'
-            ? communications.map((c, i) => {
+            ? communications.map((c) => {
                 const Icon = typeIcon[c.calls[0]?.type] || ArrowUpRight
-                const color = typeColor[c.calls[0]?.type] || 'text-blue-400'
                 const lastCall = c.calls[0]
                 return lastCall ? (
                   <button key={c.id} onClick={() => setSelectedContact(c)}
@@ -84,27 +70,33 @@ function DialerPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium text-white truncate">{c.name || c.number}</span>
-                        <Icon size={14} className={`${color} flex-shrink-0 ml-1`} />
+                        <Icon size={14} className={`${typeColor[c.calls[0]?.type]} flex-shrink-0 ml-1`} />
                       </div>
                       <p className="text-xs text-gray-400 truncate mt-0.5">{lastCall.status} • {formatTimeAgo(lastCall.timestamp)}</p>
                     </div>
                   </button>
                 ) : null
               })
-            : communications.filter(c => c.messages.length > 0).map((c, i) => {
+            : communications.filter(c => c.messages.length > 0).map((c) => {
                 const lastMsg = c.messages[c.messages.length - 1]
                 return (
-                  <button key={c.id} onClick={() => setSelectedContact(c)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-700 transition-colors cursor-pointer ${selectedContact?.id === c.id ? 'bg-gray-700' : ''}`}>
-                    <div className={`w-10 h-10 ${c.avatarColor} rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0`}>{c.initial}</div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-white truncate">{c.name || c.number}</span>
-                        <span className="text-xs text-gray-500 flex-shrink-0 ml-1">{formatTimeAgo(lastMsg.timestamp)}</span>
+                  <div key={c.id} className="group relative">
+                    <button onClick={() => setSelectedContact(c)}
+                      className={`w-full flex items-center gap-3 px-4 py-3 pr-10 text-left hover:bg-gray-700 transition-colors cursor-pointer ${selectedContact?.id === c.id ? 'bg-gray-700' : ''}`}>
+                      <div className={`w-10 h-10 ${c.avatarColor} rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0`}>{c.initial}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-white truncate">{c.name || c.number}</span>
+                          <span className="text-xs text-gray-500 flex-shrink-0 ml-1">{formatTimeAgo(lastMsg.timestamp)}</span>
+                        </div>
+                        <p className="text-xs text-gray-400 truncate mt-0.5">{lastMsg.text}</p>
                       </div>
-                      <p className="text-xs text-gray-400 truncate mt-0.5">{lastMsg.text}</p>
-                    </div>
-                  </button>
+                    </button>
+                    <button onClick={(e) => { e.stopPropagation(); handleDialNumber(c.number); }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-white transition-all cursor-pointer bg-gray-800 p-1.5 rounded-full">
+                      <Phone size={16} />
+                    </button>
+                  </div>
                 )
               })
           }
@@ -123,20 +115,22 @@ function DialerPage() {
                   {selectedContact.name && <p className="text-xs text-gray-400">{selectedContact.number}</p>}
                 </div>
               </div>
-              <div className="relative">
+              <div className="relative" ref={menuRef} onMouseEnter={handleMenuEnter} onMouseLeave={handleMenuLeave}>
                 <button onClick={() => setMenuOpen(!menuOpen)} className="text-gray-400 hover:text-white transition-colors cursor-pointer">
                   <MoreVertical size={18} />
                 </button>
                 {menuOpen && (
-                  <DropdownMenu
-                    isSaved={selectedContact.isSaved}
-                    onSave={() => {}}
-                    onEdit={() => {}}
-                    onMessage={() => {}}
-                    onBlock={() => {}}
-                    onDelete={() => { if (confirm('Delete this entry?')) setSelectedContact(null); }}
-                    onClose={() => setMenuOpen(false)}
-                  />
+                  <div className="absolute right-0 top-8 w-44 bg-gray-800 border border-gray-700 rounded-xl shadow-lg py-1 z-50">
+                    {selectedContact.isSaved ? (
+                      <button onClick={() => setMenuOpen(false)} className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center gap-2"><User size={14} /> Edit Contact</button>
+                    ) : (
+                      <button onClick={() => setMenuOpen(false)} className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center gap-2"><UserPlus size={14} /> Save Contact</button>
+                    )}
+                    <button onClick={() => setMenuOpen(false)} className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center gap-2"><MessageSquare size={14} /> Message</button>
+                    <button onClick={() => setMenuOpen(false)} className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center gap-2">🚫 Block</button>
+                    <hr className="border-gray-700 my-1" />
+                    <button onClick={() => { if (confirm('Delete this entry?')) { setSelectedContact(null); setMenuOpen(false); } }} className="w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-gray-700 transition-colors flex items-center gap-2">🗑️ Delete</button>
+                  </div>
                 )}
               </div>
             </div>
@@ -156,10 +150,7 @@ function DialerPage() {
                       return (
                         <div key={call.id} className="flex items-center gap-3 py-2">
                           <Icon size={16} className={typeColor[call.type]} />
-                          <div>
-                            <p className="text-sm text-white">{call.status}</p>
-                            <p className="text-xs text-gray-400">{formatCallTime(call.timestamp)}</p>
-                          </div>
+                          <div><p className="text-sm text-white">{call.status}</p><p className="text-xs text-gray-400">{formatCallTime(call.timestamp)}</p></div>
                         </div>
                       )
                     })

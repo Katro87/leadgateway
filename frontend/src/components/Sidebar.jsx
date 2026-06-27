@@ -14,12 +14,13 @@ function Sidebar() {
   const location = useLocation()
 
   return (
-    <aside className="w-60 bg-gray-800 border-r border-gray-700 flex flex-col h-screen">
-      <div className="px-6 py-5 border-b border-gray-700">
-        <h1 className="text-xl font-bold text-white">LeadGateway</h1>
+    <aside className="w-16 lg:w-16 bg-gray-800 border-r border-gray-700 flex flex-col h-screen group-hover:w-60 transition-all">
+      <div className="px-3 py-5 border-b border-gray-700 flex justify-center">
+        <h1 className="text-lg font-bold text-white hidden lg:hidden">LG</h1>
+        <Phone size={22} className="text-blue-400" />
       </div>
 
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+      <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path.split('?')[0]
           const Icon = item.icon
@@ -27,14 +28,17 @@ function Sidebar() {
             <Link
               key={item.name}
               to={item.path}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              title={item.name}
+              className={`flex items-center justify-center lg:justify-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors group relative ${
                 isActive
                   ? 'bg-blue-600 text-white'
                   : 'text-gray-400 hover:text-white hover:bg-gray-700'
               }`}
             >
-              <Icon size={18} />
-              {item.name}
+              <Icon size={20} />
+              <span className="hidden lg:hidden absolute left-14 bg-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-50 group-hover:block">
+                {item.name}
+              </span>
             </Link>
           )
         })}
