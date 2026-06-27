@@ -1,117 +1,132 @@
 import { useState } from 'react'
+import { Phone, PhoneOff, Mic, MicOff, Pause, Delete, User } from 'lucide-react'
+
+const recentCalls = [
+  { id: 1, name: 'Sarah Johnson', number: '(415) 555-0123', time: '10 min ago', type: 'outgoing' },
+  { id: 2, name: 'Mike Peters', number: '(212) 555-0456', time: '25 min ago', type: 'incoming' },
+  { id: 3, name: 'Emily Davis', number: '(310) 555-0789', time: '1 hour ago', type: 'missed' },
+  { id: 4, name: 'James Wilson', number: '(512) 555-0321', time: '2 hours ago', type: 'outgoing' },
+]
 
 function DialerPage() {
   const [number, setNumber] = useState('')
   const [isCallActive, setIsCallActive] = useState(false)
+  const [isMuted, setIsMuted] = useState(false)
+  const user = JSON.parse(localStorage.getItem('user') || '{}')
 
-  const handleKeyPress = (value) => {
-    setNumber((prev) => prev + value)
-  }
+  const handleKeyPress = (value) => setNumber((prev) => prev + value)
+  const handleDelete = () => setNumber((prev) => prev.slice(0, -1))
+  const handleCall = () => { if (number.trim()) setIsCallActive(true) }
+  const handleHangup = () => { setIsCallActive(false); setNumber('') }
 
-  const handleDelete = () => {
-    setNumber((prev) => prev.slice(0, -1))
-  }
-
-  const handleCall = () => {
-    if (number.trim()) {
-      setIsCallActive(true)
-    }
-  }
-
-  const handleHangup = () => {
-    setIsCallActive(false)
-    setNumber('')
-  }
-
-  const recentNumbers = [
-    { id: 1, name: 'Sarah Johnson', number: '(415) 555-0123', time: '10 min ago' },
-    { id: 2, name: 'Mike Peters', number: '(212) 555-0456', time: '25 min ago' },
-    { id: 3, name: 'Emily Davis', number: '(310) 555-0789', time: '1 hour ago' },
+  const keys = [
+    ['1', '2', '3'],
+    ['4', '5', '6'],
+    ['7', '8', '9'],
+    ['*', '0', '#'],
   ]
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 h-full">
-      {/* Dial Pad Section */}
-      <div className="flex-1 flex flex-col items-center justify-center">
-        {/* Number Display */}
-        <div className="w-full max-w-sm mb-6">
-          <input
-            type="text"
-            value={number}
-            readOnly
-            placeholder="Enter number"
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-4 text-center text-2xl font-mono text-white placeholder-gray-500 focus:outline-none"
-          />
+    <div className="flex h-full gap-0 -m-6">
+      {/* Left Panel - Activity Feed */}
+      <div className="w-72 bg-gray-800 border-r border-gray-700 p-5 flex flex-col">
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-white">Hi, {user.name || 'User'}</h2>
+          <p className="text-gray-400 text-sm mt-1">You&apos;re all caught up</p>
         </div>
+        <div className="text-center flex-1 flex flex-col items-center justify-center text-gray-500">
+          <User size={40} className="mb-3 opacity-30" />
+          <p className="text-sm">No new notifications</p>
+        </div>
+      </div>
 
-        {/* Keypad */}
-        <div className="grid grid-cols-3 gap-3 w-full max-w-sm">
-          {['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'].map(
-            (key) => (
+      {/* Center Panel - Dialer */}
+      <div className="flex-1 flex flex-col items-center justify-center bg-gray-900 p-6">
+        {!isCallActive ? (
+          <>
+            {/* Number Display */}
+            <div className="w-full max-w-xs mb-8">
+              <div className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-center min-h-[56px] flex items-center justify-center">
+                {number ? (
+                  <span className="text-3xl font-mono text-white tracking-wider">{number}</span>
+                ) : (
+                  <span className="text-gray-500 text-lg">Enter number</span>
+                )}
+              </div>
+            </div>
+
+            {/* Keypad */}
+            <div className="w-full max-w-xs space-y-2">
+              {keys.map((row, i) => (
+                <div key={i} className="flex gap-2">
+                  {row.map((key) => (
+                    <button
+                      key={key}
+                      onClick={() => handleKeyPress(key)}
+                      className="flex-1 bg-gray-800 hover:bg-gray-700 active:bg-gray-600 border border-gray-700 rounded-xl py-5 text-2xl font-medium text-white transition-colors cursor-pointer"
+                    >
+                      {key}
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
+
+            {/* Call Button */}
+            <div className="w-full max-w-xs mt-6">
               <button
-                key={key}
-                onClick={() => handleKeyPress(key)}
-                className="bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg py-4 text-xl font-medium transition-colors cursor-pointer"
+                onClick={handleCall}
+                disabled={!number.trim()}
+                className="w-full bg-green-500 hover:bg-green-600 disabled:bg-gray-700 disabled:text-gray-500 py-4 rounded-xl text-white font-semibold text-lg transition-colors cursor-pointer flex items-center justify-center gap-2"
               >
-                {key}
+                <Phone size={22} /> Call
               </button>
-            )
-          )}
-        </div>
+            </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-3 mt-6 w-full max-w-sm">
-          <button
-            onClick={handleCall}
-            disabled={!number.trim() || isCallActive}
-            className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:text-gray-500 py-4 rounded-lg text-lg font-medium transition-colors cursor-pointer"
-          >
-            📞 Call
-          </button>
-          {number && (
-            <button
-              onClick={handleDelete}
-              className="bg-gray-700 hover:bg-gray-600 px-5 py-4 rounded-lg text-lg transition-colors cursor-pointer"
-            >
-              ⌫
-            </button>
-          )}
-        </div>
-
-        {/* Active Call Controls */}
-        {isCallActive && (
-          <div className="mt-6 flex flex-col items-center gap-4">
-            <p className="text-green-400 text-lg font-medium">Call in progress...</p>
-            <p className="text-gray-400 text-sm">00:15</p>
-            <div className="flex gap-3">
-              <button className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg text-sm transition-colors cursor-pointer">
-                🔇 Mute
+            {number && (
+              <button onClick={handleDelete} className="mt-3 text-gray-400 hover:text-white text-sm cursor-pointer flex items-center gap-1">
+                <Delete size={14} /> Clear
               </button>
-              <button className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg text-sm transition-colors cursor-pointer">
-                ⏸️ Hold
+            )}
+          </>
+        ) : (
+          /* Active Call Screen */
+          <div className="flex flex-col items-center justify-center space-y-8">
+            <div className="text-center">
+              <p className="text-gray-400 text-sm">Calling...</p>
+              <p className="text-2xl font-mono text-white mt-2 tracking-wider">{number}</p>
+              <p className="text-green-400 text-lg font-medium mt-4">00:15</p>
+            </div>
+            <div className="flex gap-4">
+              <button onClick={() => setIsMuted(!isMuted)}
+                className={`w-14 h-14 rounded-full flex items-center justify-center transition-colors cursor-pointer ${
+                  isMuted ? 'bg-red-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}>
+                {isMuted ? <MicOff size={22} /> : <Mic size={22} />}
               </button>
-              <button
-                onClick={handleHangup}
-                className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-sm transition-colors cursor-pointer"
-              >
-                ❌ Hang Up
+              <button className="w-14 h-14 bg-gray-700 hover:bg-gray-600 rounded-full flex items-center justify-center text-gray-300 transition-colors cursor-pointer">
+                <Pause size={22} />
+              </button>
+              <button onClick={handleHangup}
+                className="w-14 h-14 bg-red-600 hover:bg-red-700 rounded-full flex items-center justify-center text-white transition-colors cursor-pointer">
+                <PhoneOff size={22} />
               </button>
             </div>
           </div>
         )}
       </div>
 
-      {/* Recent Calls Sidebar */}
-      <div className="lg:w-72 bg-gray-800 rounded-xl border border-gray-700 p-4">
+      {/* Right Panel - Recent Calls */}
+      <div className="w-72 bg-gray-800 border-l border-gray-700 p-5 overflow-y-auto">
         <h3 className="text-sm font-semibold text-gray-300 mb-4">Recent Calls</h3>
-        <div className="space-y-3">
-          {recentNumbers.map((call) => (
+        <div className="space-y-1">
+          {recentCalls.map((call) => (
             <button
               key={call.id}
               onClick={() => setNumber(call.number)}
               className="w-full text-left p-3 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer"
             >
-              <p className="text-sm font-medium">{call.name}</p>
+              <p className="text-sm font-medium text-white">{call.name}</p>
               <p className="text-xs text-gray-400">{call.number}</p>
               <p className="text-xs text-gray-500 mt-1">{call.time}</p>
             </button>
