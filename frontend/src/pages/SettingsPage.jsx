@@ -60,7 +60,7 @@ function SettingsPage() {
         const res = await fetch('https://api.leadgateway.tech/api/users/profile', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ password: newPassword }),
+          body: JSON.stringify({ password: newPassword, currentPassword }),
         })
         const data = await res.json()
         if (!res.ok) throw new Error(data.message)
