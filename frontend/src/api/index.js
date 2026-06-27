@@ -11,14 +11,15 @@ export const apiFetch = async (endpoint, options = {}) => {
     },
   });
 
-  if (res.status === 401) {
+  const data = await res.json();
+
+  if (res.status === 401 && token) {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     window.location.hash = '#/login';
     throw new Error('Session expired. Please log in again.');
   }
 
-  const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Something went wrong');
   return data;
 };

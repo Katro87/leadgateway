@@ -25,15 +25,19 @@ function SettingsPage() {
           method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({ password: newPassword }),
         });
-        if (!res.ok) throw new Error((await res.json()).message);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message);
       }
-      setSaveMsg('All changes saved!');
+      setSaveMsg('✅ All changes saved!');
       setHasChanges(false);
       setNewPassword('');
       setCurrentPassword('');
-      setTimeout(() => setSaveMsg(''), 2000);
+      setTimeout(() => {
+        setSaveMsg('');
+        window.location.hash = '#/dashboard';
+      }, 2000);
     } catch (err) {
-      setSaveMsg(err.message);
+      setSaveMsg('❌ ' + err.message);
     }
   };
 
