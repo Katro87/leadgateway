@@ -1,4 +1,15 @@
 # Changelog
+### v0.13.0 - Contacts CRUD with Real API ✅
+- Created Contact model with MongoDB (user, name, company, email, phone, tags, favorite, notes)
+- Built contact API routes: GET all, GET by ID, POST create, PUT update, DELETE
+- Toggle favorite endpoint
+- All contacts scoped to authenticated user
+- Frontend Contacts page fetches from live API
+- Contact Detail page loads real data
+- Favorite toggle works with API
+- Delete contact with confirmation dialog
+- Added localhost to CORS for development
+
 ### v0.12.0 - Forgot Password API ✅
 - Forgot password endpoint generates reset token
 - Reset password endpoint verifies token and updates password
