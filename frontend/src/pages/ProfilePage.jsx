@@ -5,8 +5,15 @@ import ReactCrop, { centerCrop, makeAspectCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 
 function centerAspectCrop(mediaWidth, mediaHeight, aspect) {
+  // IMPORTANT: must use 'px', not '%'. With '%' units, react-image-crop
+  // recalculates width%/height% against the container on every drag frame,
+  // and float rounding between the two values doesn't always land on an
+  // exact square — that's what causes the circle to drift into an oval
+  // while dragging. With 'px' units, width and height are literal identical
+  // numbers with nothing to round differently, so the square never drifts.
+  const side = Math.min(mediaWidth, mediaHeight) * 0.8;
   return centerCrop(
-    makeAspectCrop({ unit: '%', width: 80 }, aspect, mediaWidth, mediaHeight),
+    makeAspectCrop({ unit: 'px', width: side }, aspect, mediaWidth, mediaHeight),
     mediaWidth,
     mediaHeight,
   );
@@ -47,6 +54,7 @@ function ProfilePage() {
     const { width, height } = img;
     const crop = centerAspectCrop(width, height, 1);
     setCrop(crop);
+    setCompletedCrop(crop);
   }, []);
 
   const getCroppedImg = () => {
@@ -134,7 +142,7 @@ function ProfilePage() {
           <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 w-full max-w-lg">
             <h3 className="text-lg font-bold text-white mb-4">Crop Profile Photo</h3>
             <div className="flex justify-center">
-              {crop && (
+              {imgSrc && (
                 <ReactCrop
                   crop={crop}
                   onChange={c => setCrop(c)}
