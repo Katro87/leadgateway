@@ -19,8 +19,7 @@ function ProfilePage() {
   const [uploading, setUploading] = useState(false);
   const [cropMode, setCropMode] = useState(false);
   const [imgSrc, setImgSrc] = useState('');
-  const [crop, setCrop] = useState({ unit: '%', width: 100, height: 100, x: 0, y: 0 });
-  const [completedCrop, setCompletedCrop] = useState(null);
+const [crop, setCrop] = useState({ unit: '%', width: 80, height: 80, x: 10, y: 10 });  const [completedCrop, setCompletedCrop] = useState(null);
   const imgRef = useRef(null);
   const fileRef = useRef(null);
   const canvasRef = useRef(null);
@@ -118,9 +117,26 @@ function ProfilePage() {
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 max-w-lg w-full">
             <h3 className="text-lg font-bold text-white mb-4">Crop Profile Photo</h3>
-            <ReactCrop crop={crop} onChange={c => setCrop(c)} onComplete={c => setCompletedCrop(c)} circularCrop aspect={1}>
-              <img src={imgSrc} onLoad={(e) => onImageLoad(e.target)} alt="Crop" className="max-h-80" />
-            </ReactCrop>
+            <div className="flex justify-center">
+  <div className="w-[300px] h-[300px] relative">
+    <ReactCrop 
+      crop={crop} 
+      onChange={c => setCrop(c)} 
+      onComplete={c => setCompletedCrop(c)} 
+      circularCrop 
+      aspect={1}
+      className="w-full h-full"
+    >
+      <img 
+        src={imgSrc} 
+        onLoad={(e) => onImageLoad(e.target)} 
+        alt="Crop" 
+        className="max-w-full max-h-full object-contain"
+        style={{ minWidth: '300px', minHeight: '300px' }}
+      />
+    </ReactCrop>
+  </div>
+</div>
             <div className="flex gap-3 mt-4">
               <button onClick={handleUploadCropped} disabled={uploading} className="flex-1 bg-blue-600 hover:bg-blue-700 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer flex items-center justify-center gap-2">
                 <Crop size={16} /> {uploading ? 'Uploading...' : 'Save Photo'}
