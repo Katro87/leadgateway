@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
-import { Phone, PhoneOff, Mic, MicOff, Pause, Keyboard, UserPlus, MessageSquare, ArrowUpRight, ArrowDownLeft, PhoneMissed, ChevronDown, Send, Paperclip, MoreVertical, User, X, Play, Download, Trash2, Check } from 'lucide-react'
+import { Phone, PhoneOff, Mic, MicOff, Pause, Keyboard, UserPlus, MessageSquare, ArrowUpRight, ArrowDownLeft, PhoneMissed, ChevronDown, Send, Paperclip, MoreVertical, User, X, Play, Download, Trash2, Check, Loader2 } from 'lucide-react'
 import { getContacts, createContact, updateContact } from '../api/contacts'
+import { getCalls, createCall, deleteCall } from '../api/calls'
+import { getMessages as fetchMessages, sendMessage as sendMsg, deleteMessage } from '../api/messages'
 
 const typeIcon = { incoming: ArrowDownLeft, outgoing: ArrowUpRight, missed: PhoneMissed }
 const typeColor = { incoming: 'text-green-400', outgoing: 'text-blue-400', missed: 'text-red-400' }
@@ -37,6 +39,8 @@ function getTabFromHash() {
 function DialerPage() {
   const [activeLeftTab, setActiveLeftTab] = useState(getTabFromHash)
   const [contacts, setContacts] = useState([])
+  const [calls, setCalls] = useState([])
+  const [messages, setMessages] = useState([])
   const [number, setNumber] = useState('')
   const [isCallActive, setIsCallActive] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
@@ -46,42 +50,24 @@ function DialerPage() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [showSaveModal, setShowSaveModal] = useState(false)
   const [saveForm, setSaveForm] = useState({ name: '', company: '', email: '', phone: '', tags: '' })
+  const [loading, setLoading] = useState(true)
   const menuRef = useRef(null)
   const menuTimeout = useRef(null)
   const user = JSON.parse(localStorage.getItem('user') || '{}')
 
-  const [callsData, setCallsData] = useState({
-    'Sarah Johnson': [
-      { id: 101, type: 'outgoing', status: 'Connected', timestamp: '2026-06-26T10:30:00' },
-      { id: 102, type: 'incoming', status: 'Voicemail', timestamp: '2026-06-25T14:00:00' },
-      { id: 105, type: 'outgoing', status: 'Connected', timestamp: '2026-06-24T09:00:00' },
-    ],
-    'sufyan': [
-      { id: 103, type: 'incoming', status: 'Voicemail', timestamp: '2026-06-26T10:05:00' },
-      { id: 106, type: 'missed', status: 'No Answer', timestamp: '2026-06-23T15:00:00' },
-    ],
-  })
+  const loadData = async () => {
+    try {
+      const [contactsData, callsData, messagesData] = await Promise.all([
+        getContacts(), getCalls(), fetchMessages()
+      ]);
+      setContacts(contactsData);
+      setCalls(callsData);
+      setMessages(messagesData);
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
+  };
 
-  const [messagesData, setMessagesData] = useState({
-    'Sarah Johnson': [
-      { id: 201, sender: 'them', text: 'Hi! Are we still on for the demo tomorrow?', timestamp: '2026-06-26T10:15:00' },
-      { id: 202, sender: 'me', text: 'Yes, absolutely. 2 PM works great.', timestamp: '2026-06-26T10:20:00' },
-    ],
-    'sufyan': [
-      { id: 203, sender: 'them', text: 'Can you send me the proposal?', timestamp: '2026-06-26T09:15:00' },
-    ],
-  })
-
-  const [voicemailsData, setVoicemailsData] = useState({
-    'Sarah Johnson': [
-      { id: 301, duration: '0:45', timestamp: '2026-06-25T14:00:00', listened: false, transcription: 'Hey Sarah, just checking in on the proposal. Call me back when you can.' },
-    ],
-    'sufyan': [
-      { id: 302, duration: '0:32', timestamp: '2026-06-26T10:05:00', listened: false, transcription: 'Hi, this is Mike. Please send over the documents when you get a chance.' },
-    ],
-  })
-
-  useEffect(() => { getContacts().then(setContacts).catch(console.error); }, []);
+  useEffect(() => { loadData(); }, []);
 
   useEffect(() => {
     const checkTab = () => {
@@ -97,142 +83,128 @@ function DialerPage() {
     return () => { window.removeEventListener('hashchange', checkTab); clearInterval(interval); };
   }, []);
 
-  useEffect(() => {
-    if (selectedContact) {
-      const updated = contacts.find(c => c._id === selectedContact._id);
-      if (updated) setSelectedContact(updated);
-    }
-  }, [contacts]);
-
-  const getContactCalls = (c) => callsData[c.name] || [];
-  const getContactMessages = (c) => messagesData[c.name] || [];
-  const getContactVoicemails = (c) => voicemailsData[c.name] || [];
+  const getCallsForContact = (c) => calls.filter(call => call.number === c.phone);
+  const getMessagesForContact = (c) => messages.filter(msg => msg.number === c.phone);
   const getContactInitial = (c) => (c.name || '?').charAt(0).toUpperCase();
   const getContactAvatarColor = (c) => avatarColors[Math.abs((c.name || '').split('').reduce((a, b) => a + b.charCodeAt(0), 0)) % avatarColors.length];
 
   const handleMenuEnter = () => { if (menuTimeout.current) clearTimeout(menuTimeout.current); setMenuOpen(true); };
   const handleMenuLeave = () => { menuTimeout.current = setTimeout(() => setMenuOpen(false), 2000); };
   const handleKeyPress = (v) => setNumber((p) => p + v)
-  const handleCall = () => { if (number.trim()) setIsCallActive(true) }
+  
+  const handleCall = async () => {
+    if (!number.trim()) return;
+    setIsCallActive(true);
+    try {
+      const newCall = await createCall({ number: number.trim(), contactName: 'Unknown', type: 'outgoing', status: 'Calling', duration: 0 });
+      setCalls(prev => [newCall, ...prev]);
+    } catch (err) { console.error(err); }
+  };
+
   const handleHangup = () => { setIsCallActive(false); setNumber(''); setShowKeypad(false); setIsMuted(false) }
   const handleDialNumber = (num) => { setNumber(num); setSelectedContact(null) }
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!messageText.trim() || !selectedContact) return;
-    const newMsg = { id: Date.now(), sender: 'me', text: messageText, timestamp: new Date().toISOString() };
-    setMessagesData(prev => ({ ...prev, [selectedContact.name]: [...(prev[selectedContact.name] || []), newMsg] }));
-    setMessageText('');
+    try {
+      const newMsg = await sendMsg({ number: selectedContact.phone, contactName: selectedContact.name, text: messageText, direction: 'sent' });
+      setMessages(prev => [newMsg, ...prev]);
+      setMessageText('');
+    } catch (err) { console.error(err); }
   };
 
   const handleSaveContact = async () => {
     if (!saveForm.name.trim()) return;
     try {
-      await createContact({
-        name: saveForm.name, company: saveForm.company, email: saveForm.email,
-        phone: saveForm.phone, tags: saveForm.tags ? saveForm.tags.split(',').map(t => t.trim()).filter(Boolean) : [],
-      });
+      await createContact({ name: saveForm.name, company: saveForm.company, email: saveForm.email, phone: saveForm.phone, tags: saveForm.tags ? saveForm.tags.split(',').map(t => t.trim()).filter(Boolean) : [] });
       const updated = await getContacts();
       setContacts(updated);
-      setShowSaveModal(false);
-      setMenuOpen(false);
+      setShowSaveModal(false); setMenuOpen(false);
     } catch (err) { console.error(err); }
   };
 
   const handleSwitchToMessages = () => {
     sessionStorage.setItem('dialerTab', 'messages');
-    setActiveLeftTab('messages');
-    setMenuOpen(false);
+    setActiveLeftTab('messages'); setMenuOpen(false);
   };
 
-  const handleDeleteCallEntry = (contactName, callId) => {
-    setCallsData(prev => ({ ...prev, [contactName]: (prev[contactName] || []).filter(c => c.id !== callId) }));
+  const handleDeleteCall = async (id) => {
+    try { await deleteCall(id); setCalls(prev => prev.filter(c => c._id !== id)); } catch (err) { console.error(err); }
   };
 
-  const handleDeleteMessage = (contactName, msgId) => {
-    setMessagesData(prev => ({ ...prev, [contactName]: (prev[contactName] || []).filter(m => m.id !== msgId) }));
+  const handleDeleteMessage = async (id) => {
+    try { await deleteMessage(id); setMessages(prev => prev.filter(m => m._id !== id)); } catch (err) { console.error(err); }
   };
 
-  const handleDeleteVoicemail = (contactName, vmId) => {
-    setVoicemailsData(prev => ({ ...prev, [contactName]: (prev[contactName] || []).filter(v => v.id !== vmId) }));
-  };
+  const getActiveContactCalls = () => selectedContact ? getCallsForContact(selectedContact) : [];
+  const getActiveContactMessages = () => selectedContact ? getMessagesForContact(selectedContact) : [];
 
-  const handleClearHistory = () => {
-    if (activeLeftTab === 'calls') setCallsData(prev => ({ ...prev, [selectedContact.name]: [] }));
-    else if (activeLeftTab === 'messages') setMessagesData(prev => ({ ...prev, [selectedContact.name]: [] }));
-    else if (activeLeftTab === 'voicemail') setVoicemailsData(prev => ({ ...prev, [selectedContact.name]: [] }));
-    setMenuOpen(false);
-  };
+  // Group calls by unique number for left pane
+  const uniqueNumbers = [...new Set(calls.map(c => c.number))];
+  const groupedCalls = uniqueNumbers.map(num => {
+    const numCalls = calls.filter(c => c.number === num);
+    const contact = contacts.find(c => c.phone === num);
+    return { number: num, name: contact?.name || numCalls[0]?.contactName || 'Unknown', calls: numCalls, contact };
+  });
 
-  const notificationText = null;
+  const uniqueMsgNumbers = [...new Set(messages.map(m => m.number))];
+  const groupedMessages = uniqueMsgNumbers.map(num => {
+    const numMsgs = messages.filter(m => m.number === num);
+    const contact = contacts.find(c => c.phone === num);
+    return { number: num, name: contact?.name || numMsgs[0]?.contactName || 'Unknown', messages: numMsgs, contact };
+  });
 
   return (
     <div className="flex h-full -m-6">
       {/* LEFT PANE */}
       <div className="w-80 bg-gray-800 border-r border-gray-700 flex flex-col">
         <div className="flex-1 overflow-y-auto">
-          {activeLeftTab === 'calls'
-            ? contacts.map((c) => {
-                const calls = getContactCalls(c);
-                const lastCall = calls[0];
-                if (!lastCall) return null;
-                const Icon = typeIcon[lastCall.type] || ArrowUpRight;
-                return (
-                  <button key={c._id} onClick={() => setSelectedContact(c)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-700 transition-colors cursor-pointer ${selectedContact?._id === c._id ? 'bg-gray-700' : ''}`}>
-                    <div className={`w-10 h-10 ${getContactAvatarColor(c)} rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0`}>{getContactInitial(c)}</div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-white truncate">{c.name}</span>
-                        <Icon size={14} className={`${typeColor[lastCall.type]} flex-shrink-0 ml-1`} />
-                      </div>
-                      <p className="text-xs text-gray-400 truncate mt-0.5">{lastCall.status} • {formatTimeAgo(lastCall.timestamp)}</p>
+          {loading ? (
+            <div className="flex items-center justify-center py-12"><Loader2 size={24} className="animate-spin text-blue-400" /></div>
+          ) : activeLeftTab === 'calls' ? (
+            groupedCalls.map((g, i) => {
+              const lastCall = g.calls[0];
+              const Icon = typeIcon[lastCall.type] || ArrowUpRight;
+              return (
+                <button key={i} onClick={() => setSelectedContact(g.contact || { name: g.name, phone: g.number })}
+                  className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-700 transition-colors cursor-pointer ${selectedContact?.phone === g.number ? 'bg-gray-700' : ''}`}>
+                  <div className={`w-10 h-10 ${avatarColors[i % avatarColors.length]} rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0`}>{g.name.charAt(0)}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-white truncate">{g.name}</span>
+                      <Icon size={14} className={`${typeColor[lastCall.type]} flex-shrink-0 ml-1`} />
                     </div>
-                  </button>
-                )
-              })
-            : activeLeftTab === 'messages'
-            ? contacts.filter(c => (messagesData[c.name] || []).length > 0).map((c) => {
-                const msgs = getContactMessages(c);
-                const lastMsg = msgs[msgs.length - 1];
-                return (
-                  <div key={c._id} className="group relative">
-                    <button onClick={() => setSelectedContact(c)}
-                      className={`w-full flex items-center gap-3 px-4 py-3 pr-10 text-left hover:bg-gray-700 transition-colors cursor-pointer ${selectedContact?._id === c._id ? 'bg-gray-700' : ''}`}>
-                      <div className={`w-10 h-10 ${getContactAvatarColor(c)} rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0`}>{getContactInitial(c)}</div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-white truncate">{c.name}</span>
-                          <span className="text-xs text-gray-500 flex-shrink-0 ml-1">{formatTimeAgo(lastMsg.timestamp)}</span>
-                        </div>
-                        <p className="text-xs text-gray-400 truncate mt-0.5">{lastMsg.text}</p>
-                      </div>
-                    </button>
-                    <button onClick={(e) => { e.stopPropagation(); handleDialNumber(c.phone); }}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-white transition-all cursor-pointer bg-gray-700 p-1.5 rounded-full">
-                      <Phone size={16} />
-                    </button>
+                    <p className="text-xs text-gray-400 truncate mt-0.5">{lastCall.status} • {formatTimeAgo(lastCall.createdAt)}</p>
                   </div>
-                )
-              })
-            : contacts.filter(c => (voicemailsData[c.name] || []).length > 0).map((c) => {
-                const vms = getContactVoicemails(c);
-                const lastVm = vms[vms.length - 1];
-                const hasUnread = vms.some(v => !v.listened);
-                return (
-                  <button key={c._id} onClick={() => setSelectedContact(c)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-700 transition-colors cursor-pointer ${selectedContact?._id === c._id ? 'bg-gray-700' : ''}`}>
-                    <div className={`w-10 h-10 ${getContactAvatarColor(c)} rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0`}>{getContactInitial(c)}</div>
+                </button>
+              )
+            })
+          ) : activeLeftTab === 'messages' ? (
+            groupedMessages.map((g, i) => {
+              const lastMsg = g.messages[0];
+              return (
+                <div key={i} className="group relative">
+                  <button onClick={() => setSelectedContact(g.contact || { name: g.name, phone: g.number })}
+                    className={`w-full flex items-center gap-3 px-4 py-3 pr-10 text-left hover:bg-gray-700 transition-colors cursor-pointer ${selectedContact?.phone === g.number ? 'bg-gray-700' : ''}`}>
+                    <div className={`w-10 h-10 ${avatarColors[i % avatarColors.length]} rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0`}>{g.name.charAt(0)}</div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-white truncate">{c.name}</span>
-                        {hasUnread && <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 ml-1"></span>}
+                        <span className="text-sm font-medium text-white truncate">{g.name}</span>
+                        <span className="text-xs text-gray-500 flex-shrink-0 ml-1">{formatTimeAgo(lastMsg.createdAt)}</span>
                       </div>
-                      <p className="text-xs text-gray-400 truncate mt-0.5">{lastVm.duration} • {formatTimeAgo(lastVm.timestamp)}</p>
+                      <p className="text-xs text-gray-400 truncate mt-0.5">{lastMsg.text}</p>
                     </div>
                   </button>
-                )
-              })
-          }
+                  <button onClick={(e) => { e.stopPropagation(); handleDialNumber(g.number); }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-white transition-all cursor-pointer bg-gray-700 p-1.5 rounded-full">
+                    <Phone size={16} />
+                  </button>
+                </div>
+              )
+            })
+          ) : (
+            <div className="text-center py-12 text-gray-500 text-sm">No voicemails yet</div>
+          )}
         </div>
       </div>
 
@@ -244,7 +216,7 @@ function DialerPage() {
               <div className="flex items-center gap-3">
                 <div className={`w-9 h-9 ${getContactAvatarColor(selectedContact)} rounded-full flex items-center justify-center text-white font-semibold text-sm`}>{getContactInitial(selectedContact)}</div>
                 <div>
-                  <span className="text-white font-medium text-sm">{selectedContact.name}</span>
+                  <span className="text-white font-medium text-sm">{selectedContact.name || 'Unknown'}</span>
                   {selectedContact.phone && <p className="text-xs text-gray-400">{selectedContact.phone}</p>}
                 </div>
               </div>
@@ -252,61 +224,47 @@ function DialerPage() {
                 <button onClick={() => setMenuOpen(!menuOpen)} className="text-gray-400 hover:text-white transition-colors cursor-pointer"><MoreVertical size={18} /></button>
                 {menuOpen && (
                   <div className="absolute right-0 top-8 w-44 bg-gray-800 border border-gray-700 rounded-xl shadow-lg py-1 z-50">
-                    <button onClick={() => { setSaveForm({ name: selectedContact.name || '', company: selectedContact.company || '', email: selectedContact.email || '', phone: selectedContact.phone || '', tags: (selectedContact.tags || []).join(', ') }); setShowSaveModal(true); }}
-                      className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center gap-2"><User size={14} /> Edit Contact</button>
+                    {contacts.find(c => c.phone === selectedContact.phone) ? (
+                      <button onClick={() => { const c = contacts.find(ct => ct.phone === selectedContact.phone); setSaveForm({ name: c.name || '', company: c.company || '', email: c.email || '', phone: c.phone || '', tags: (c.tags || []).join(', ') }); setShowSaveModal(true); }}
+                        className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center gap-2"><User size={14} /> Edit Contact</button>
+                    ) : (
+                      <button onClick={() => { setSaveForm({ name: '', company: '', email: '', phone: selectedContact.phone || '', tags: '' }); setShowSaveModal(true); }}
+                        className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center gap-2"><UserPlus size={14} /> Save Contact</button>
+                    )}
                     <button onClick={handleSwitchToMessages}
                       className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center gap-2"><MessageSquare size={14} /> Message</button>
-                    <hr className="border-gray-700 my-1" />
-                    <button onClick={handleClearHistory}
-                      className="w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-gray-700 transition-colors flex items-center gap-2"><Trash2 size={14} /> Clear History</button>
                   </div>
                 )}
               </div>
             </div>
             <div className="flex-1 overflow-y-auto p-5 space-y-4">
-              {activeLeftTab === 'messages' && getContactMessages(selectedContact).length > 0
-                ? getContactMessages(selectedContact).map((msg) => (
-                    <div key={msg.id} className={`flex group ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-xs px-4 py-2 rounded-xl text-sm relative ${msg.sender === 'me' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-200'}`}>
-                        <p>{msg.text}</p><p className="text-xs mt-1 opacity-70">{formatTimeAgo(msg.timestamp)}</p>
-                      </div>
-                      <button onClick={() => handleDeleteMessage(selectedContact.name, msg.id)}
-                        className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400 transition-all cursor-pointer ml-1 self-center"><Trash2 size={14} /></button>
+              {activeLeftTab === 'messages' ? (
+                getActiveContactMessages().length > 0 ? getActiveContactMessages().sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)).map((msg) => (
+                  <div key={msg._id} className={`flex group ${msg.direction === 'sent' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-xs px-4 py-2 rounded-xl text-sm relative ${msg.direction === 'sent' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-200'}`}>
+                      <p>{msg.text}</p><p className="text-xs mt-1 opacity-70">{formatTimeAgo(msg.createdAt)}</p>
                     </div>
-                  ))
-                : activeLeftTab === 'calls' && getContactCalls(selectedContact).length > 0
-                  ? getContactCalls(selectedContact).map((call) => {
-                      const Icon = typeIcon[call.type]
-                      return (
-                        <div key={call.id} className="flex items-center justify-between py-2 group">
-                          <div className="flex items-center gap-3">
-                            <Icon size={16} className={typeColor[call.type]} />
-                            <div><p className="text-sm text-white">{call.status}</p><p className="text-xs text-gray-400">{formatCallTime(call.timestamp)}</p></div>
-                          </div>
-                          <button onClick={() => handleDeleteCallEntry(selectedContact.name, call.id)}
-                            className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400 transition-all cursor-pointer"><Trash2 size={14} /></button>
-                        </div>
-                      )
-                    })
-                  : activeLeftTab === 'voicemail' && getContactVoicemails(selectedContact).length > 0
-                    ? getContactVoicemails(selectedContact).map((vm) => (
-                        <div key={vm.id} className={`bg-gray-800 rounded-xl border p-4 ${vm.listened ? 'border-gray-700' : 'border-blue-600/50'}`}>
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">{!vm.listened && <span className="w-2 h-2 bg-blue-500 rounded-full"></span>}<span className="text-sm text-white font-medium">Voicemail</span></div>
-                            <span className="text-xs text-gray-400">{vm.duration}</span>
-                          </div>
-                          <p className="text-sm text-gray-300 mb-3">{vm.transcription}</p>
-                          <p className="text-xs text-gray-500 mb-3">{formatTimeAgo(vm.timestamp)}</p>
-                          <div className="flex gap-2">
-                            <button className="flex items-center gap-1 text-xs text-gray-400 hover:text-white bg-gray-700 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"><Play size={14} /> Play</button>
-                            <button className="flex items-center gap-1 text-xs text-gray-400 hover:text-white bg-gray-700 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"><Download size={14} /> Download</button>
-                            <button onClick={() => handleDeleteVoicemail(selectedContact.name, vm.id)}
-                              className="flex items-center gap-1 text-xs text-red-400 hover:text-red-300 bg-gray-700 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"><Trash2 size={14} /> Delete</button>
-                          </div>
-                        </div>
-                      ))
-                    : <p className="text-center text-gray-500 text-sm">No history yet</p>
-              }
+                    <button onClick={() => handleDeleteMessage(msg._id)}
+                      className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400 transition-all cursor-pointer ml-1 self-center"><Trash2 size={14} /></button>
+                  </div>
+                )) : <p className="text-center text-gray-500 text-sm">No messages yet</p>
+              ) : activeLeftTab === 'calls' ? (
+                getActiveContactCalls().length > 0 ? getActiveContactCalls().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).map((call) => {
+                  const Icon = typeIcon[call.type] || ArrowUpRight;
+                  return (
+                    <div key={call._id} className="flex items-center justify-between py-2 group">
+                      <div className="flex items-center gap-3">
+                        <Icon size={16} className={typeColor[call.type] || 'text-blue-400'} />
+                        <div><p className="text-sm text-white">{call.status}</p><p className="text-xs text-gray-400">{formatCallTime(call.createdAt)}</p></div>
+                      </div>
+                      <button onClick={() => handleDeleteCall(call._id)}
+                        className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400 transition-all cursor-pointer"><Trash2 size={14} /></button>
+                    </div>
+                  )
+                }) : <p className="text-center text-gray-500 text-sm">No calls yet</p>
+              ) : (
+                <p className="text-center text-gray-500 text-sm">No voicemails yet</p>
+              )}
             </div>
             {activeLeftTab === 'messages' && (
               <div className="p-4 border-t border-gray-700 flex items-center gap-2">
@@ -336,19 +294,15 @@ function DialerPage() {
             <div className="flex flex-col items-center flex-1 justify-center">
               <div className="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center mb-6"><span className="text-4xl font-bold text-white">{number.slice(-2)}</span></div>
               <p className="text-gray-400 text-sm">{number}</p>
-              <p className="text-white text-3xl font-mono mt-3">00:15</p>
+              <p className="text-white text-3xl font-mono mt-3">00:00</p>
             </div>
-            {showKeypad ? (
-              <div className="w-full space-y-2">{keys.map((row, i) => (<div key={i} className="flex gap-2">{row.map((k) => (<button key={k} className="flex-1 bg-gray-700 hover:bg-gray-600 rounded-xl py-4 text-xl font-medium text-white cursor-pointer">{k}</button>))}</div>))}</div>
-            ) : (
-              <div className="grid grid-cols-3 gap-3 w-full max-w-xs">
-                {[{ icon: MessageSquare, label: 'Message' }, { icon: isMuted ? MicOff : Mic, label: isMuted ? 'Unmute' : 'Mute', onClick: () => setIsMuted(!isMuted) }, { icon: Pause, label: 'Hold' }, { icon: Keyboard, label: 'Keypad', onClick: () => setShowKeypad(true) }, { icon: UserPlus, label: 'Transfer' }, { icon: MessageSquare, label: 'Record' }].map((a, i) => (
-                  <button key={i} onClick={a.onClick} className="flex flex-col items-center gap-1 text-gray-300 hover:text-white cursor-pointer">
-                    <div className="w-12 h-12 bg-gray-700 hover:bg-gray-600 rounded-full flex items-center justify-center"><a.icon size={20} /></div><span className="text-xs">{a.label}</span>
-                  </button>
-                ))}
-              </div>
-            )}
+            <div className="grid grid-cols-3 gap-3 w-full max-w-xs">
+              {[{ icon: MessageSquare, label: 'Message' }, { icon: isMuted ? MicOff : Mic, label: isMuted ? 'Unmute' : 'Mute', onClick: () => setIsMuted(!isMuted) }, { icon: Pause, label: 'Hold' }, { icon: Keyboard, label: 'Keypad', onClick: () => setShowKeypad(true) }, { icon: UserPlus, label: 'Transfer' }, { icon: MessageSquare, label: 'Record' }].map((a, i) => (
+                <button key={i} onClick={a.onClick} className="flex flex-col items-center gap-1 text-gray-300 hover:text-white cursor-pointer">
+                  <div className="w-12 h-12 bg-gray-700 hover:bg-gray-600 rounded-full flex items-center justify-center"><a.icon size={20} /></div><span className="text-xs">{a.label}</span>
+                </button>
+              ))}
+            </div>
             <button onClick={handleHangup} className="w-16 h-16 bg-red-600 hover:bg-red-700 rounded-full flex items-center justify-center mt-6 cursor-pointer"><PhoneOff size={28} className="text-white" /></button>
           </div>
         ) : (
@@ -372,7 +326,7 @@ function DialerPage() {
       {showSaveModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowSaveModal(false)}>
           <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-white mb-4">Edit Contact</h3>
+            <h3 className="text-lg font-bold text-white mb-4">{contacts.find(c => c.phone === selectedContact?.phone) ? 'Edit Contact' : 'Save Contact'}</h3>
             <div className="space-y-3">
               <input type="text" placeholder="Name *" value={saveForm.name} onChange={(e) => setSaveForm({ ...saveForm, name: e.target.value })}
                 className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500" />
