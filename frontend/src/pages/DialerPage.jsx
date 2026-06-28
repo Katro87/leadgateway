@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Phone, PhoneOff, Mic, MicOff, Pause, Keyboard, UserPlus, MessageSquare, ArrowUpRight, ArrowDownLeft, PhoneMissed, ChevronDown, Send, Paperclip, MoreVertical, User, X, Play, Download, Trash2, Check, Loader2 } from 'lucide-react'
-import { getContacts, createContact, updateContact } from '../api/contacts'
+import { getContacts, createContact } from '../api/contacts';
 import { getCalls, createCall, deleteCall } from '../api/calls'
 import { getMessages as fetchMessages, sendMessage as sendMsg, deleteMessage } from '../api/messages'
 
