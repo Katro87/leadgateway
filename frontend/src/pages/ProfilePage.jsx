@@ -1,6 +1,16 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Mail, Phone, FileText, Pencil, Check, X, AlertCircle, Camera, Globe, Users, EyeOff, Maximize2 } from 'lucide-react';
+import { ArrowLeft, User, Mail, Phone, FileText, Pencil, Check, X, AlertCircle, Camera, Globe, Users, EyeOff, Crop, Maximize2 } from 'lucide-react';
+import ReactCrop, { centerCrop, makeAspectCrop } from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
+
+function centerAspectCrop(mediaWidth, mediaHeight, aspect) {
+  return centerCrop(
+    makeAspectCrop({ unit: '%', width: 80 }, aspect, mediaWidth, mediaHeight),
+    mediaWidth,
+    mediaHeight,
+  );
+}
 
 function ProfilePage() {
   const navigate = useNavigate();
@@ -15,28 +25,64 @@ function ProfilePage() {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [cropMode, setCropMode] = useState(false);
+  const [imgSrc, setImgSrc] = useState('');
+  const [crop, setCrop] = useState(null);
+  const [completedCrop, setCompletedCrop] = useState(null);
   const [pendingAvatar, setPendingAvatar] = useState(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const imgRef = useRef(null);
   const fileRef = useRef(null);
 
-  const onSelectFile = async (e) => {
+  const onSelectFile = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => { setImgSrc(reader.result); setCropMode(true); setCrop(null); setCompletedCrop(null); };
+    reader.readAsDataURL(file);
+  };
+
+  const onImageLoad = useCallback((img) => {
+    imgRef.current = img;
+    const { width, height } = img;
+    const crop = centerAspectCrop(width, height, 1);
+    setCrop(crop);
+  }, []);
+
+  const getCroppedImg = () => {
+    if (!completedCrop || !imgRef.current) return;
+    const canvas = document.createElement('canvas');
+    const scaleX = imgRef.current.naturalWidth / imgRef.current.width;
+    const scaleY = imgRef.current.naturalHeight / imgRef.current.height;
+    canvas.width = 400;
+    canvas.height = 400;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(imgRef.current, completedCrop.x * scaleX, completedCrop.y * scaleY, completedCrop.width * scaleX, completedCrop.height * scaleY, 0, 0, 400, 400);
+    return canvas;
+  };
+
+  const handleUploadCropped = async () => {
+    const canvas = getCroppedImg();
+    if (!canvas) return;
     setUploading(true);
-    try {
-      const token = localStorage.getItem('token');
-      const formData = new FormData();
-      formData.append('avatar', file);
-      const res = await fetch('https://api.leadgateway.tech/api/upload/avatar', {
-        method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData,
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
-      const avatarUrl = `https://api.leadgateway.tech${data.avatar}`;
-      setPendingAvatar(avatarUrl);
-      setAvatar(avatarUrl);
-    } catch (err) { setError(err.message); }
-    finally { setUploading(false); }
+    canvas.toBlob(async (blob) => {
+      try {
+        const token = localStorage.getItem('token');
+        const formData = new FormData();
+        formData.append('avatar', blob, 'avatar.jpg');
+        const res = await fetch('https://api.leadgateway.tech/api/upload/avatar', {
+          method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData,
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message);
+        const avatarUrl = `https://api.leadgateway.tech${data.avatar}`;
+        setPendingAvatar(avatarUrl);
+        setAvatar(avatarUrl);
+        setCropMode(false);
+        setImgSrc('');
+      } catch (err) { setError(err.message); }
+      finally { setUploading(false); }
+    }, 'image/jpeg');
   };
 
   const handleSave = async (e) => {
@@ -82,6 +128,43 @@ function ProfilePage() {
       <button onClick={() => navigate('/dashboard')} className="text-gray-400 hover:text-white text-sm flex items-center gap-1 transition-colors">
         <ArrowLeft size={16} /> Back to Dashboard
       </button>
+
+      {cropMode && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 w-full max-w-lg">
+            <h3 className="text-lg font-bold text-white mb-4">Crop Profile Photo</h3>
+            <div className="flex justify-center">
+              {crop && (
+                <ReactCrop
+                  crop={crop}
+                  onChange={c => setCrop(c)}
+                  onComplete={c => setCompletedCrop(c)}
+                  circularCrop
+                  aspect={1}
+                  locked
+                  ruleOfThirds
+                >
+                  <img
+                    src={imgSrc}
+                    onLoad={(e) => onImageLoad(e.target)}
+                    alt="Crop"
+                    style={{ maxWidth: '100%', maxHeight: '70vh' }}
+                  />
+                </ReactCrop>
+              )}
+            </div>
+            <p className="text-xs text-gray-500 text-center mt-3">Drag the image to position it. The circle stays fixed.</p>
+            <div className="flex gap-3 mt-4">
+              <button onClick={handleUploadCropped} disabled={uploading}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer flex items-center justify-center gap-2">
+                <Crop size={16} /> {uploading ? 'Uploading...' : 'Add Profile Pic'}
+              </button>
+              <button onClick={() => { setCropMode(false); setImgSrc(''); }}
+                className="flex-1 bg-gray-700 hover:bg-gray-600 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {lightboxOpen && avatar && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 cursor-pointer" onClick={() => setLightboxOpen(false)}>
@@ -145,4 +228,4 @@ function ProfilePage() {
   )
 }
 
-export default ProfilePage"// v2" 
+export default ProfilePage
