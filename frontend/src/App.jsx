@@ -8,7 +8,6 @@ import DashboardPage from './pages/DashboardPage'
 import ContactsPage from './pages/ContactsPage'
 import ContactDetailPage from './pages/ContactDetailPage'
 import DialerPage from './pages/DialerPage'
-import VoicemailPage from './pages/VoicemailPage'
 import SettingsPage from './pages/SettingsPage'
 import NotFoundPage from './pages/NotFoundPage'
 import DashboardLayout from './layouts/DashboardLayout'
@@ -30,7 +29,6 @@ function App() {
           <Route path="/contacts" element={<ContactsPage />} />
           <Route path="/contacts/:id" element={<ContactDetailPage />} />
           <Route path="/dialer" element={<DialerPage />} />
-          <Route path="/voicemail" element={<VoicemailPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
         </Route>

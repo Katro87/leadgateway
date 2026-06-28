@@ -6,7 +6,7 @@ const navItems = [
   { name: 'Dialer', path: '/dialer', icon: Phone, tab: 'calls' },
   { name: 'Messages', path: '/dialer', icon: MessageSquare, tab: 'messages' },
   { name: 'Contacts', path: '/contacts', icon: Users },
-  { name: 'Voicemail', path: '/voicemail', icon: Voicemail },
+  { name: 'Voicemail', path: '/dialer', icon: Voicemail, tab: 'voicemail' },
   { name: 'Settings', path: '/settings', icon: Settings },
 ]
 

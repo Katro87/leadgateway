@@ -1,15 +1,31 @@
 import { useState, useEffect, useRef } from 'react'
-import { Phone, PhoneOff, Mic, MicOff, Pause, Keyboard, UserPlus, MessageSquare, ArrowUpRight, ArrowDownLeft, PhoneMissed, ChevronDown, Send, Paperclip, MoreVertical, User, X } from 'lucide-react'
+import { Phone, PhoneOff, Mic, MicOff, Pause, Keyboard, UserPlus, MessageSquare, ArrowUpRight, ArrowDownLeft, PhoneMissed, ChevronDown, Send, Paperclip, MoreVertical, User, X, Play, Download, Trash2 } from 'lucide-react'
 import { communications, formatTimeAgo, formatCallTime } from '../data/communications'
 
 const typeIcon = { incoming: ArrowDownLeft, outgoing: ArrowUpRight, missed: PhoneMissed }
 const typeColor = { incoming: 'text-green-400', outgoing: 'text-blue-400', missed: 'text-red-400' }
 const keys = [['1', '2', '3'], ['4', '5', '6'], ['7', '8', '9'], ['*', '0', '#']]
 
+// Voicemail data per contact
+const voicemails = {
+  1: [
+    { id: 301, duration: '0:45', timestamp: '2026-06-26T10:05:00', listened: false, transcription: 'Hey, just checking in on the proposal. Call me back when you can.' },
+    { id: 302, duration: '1:12', timestamp: '2026-06-23T17:00:00', listened: true, transcription: 'Following up on our meeting. Looking forward to hearing from you.' },
+  ],
+  2: [
+    { id: 303, duration: '0:32', timestamp: '2026-06-25T09:15:00', listened: false, transcription: 'Hi, this is Mike. Please send over the documents when you get a chance.' },
+  ],
+  4: [
+    { id: 304, duration: '0:18', timestamp: '2026-06-21T14:40:00', listened: false, transcription: 'Unknown caller. No message left.' },
+  ],
+}
+
 function getTabFromHash() {
   const hash = window.location.hash;
   const match = hash.match(/tab=(\w+)/);
-  return match && match[1] === 'messages' ? 'messages' : 'calls';
+  if (match && match[1] === 'messages') return 'messages';
+  if (match && match[1] === 'voicemail') return 'voicemail';
+  return 'calls';
 }
 
 function DialerPage() {
@@ -25,26 +41,22 @@ function DialerPage() {
   const menuTimeout = useRef(null)
   const user = JSON.parse(localStorage.getItem('user') || '{}')
 
-useEffect(() => {
-  const checkTab = () => {
-    const savedTab = sessionStorage.getItem('dialerTab');
-    if (savedTab === 'messages') {
-      setActiveLeftTab('messages');
-    } else if (savedTab === 'calls') {
-      setActiveLeftTab('calls');
-    } else {
-      const hashTab = getTabFromHash();
-      setActiveLeftTab(hashTab);
-    }
-  };
-  checkTab();
-  window.addEventListener('hashchange', checkTab);
-  const interval = setInterval(checkTab, 200);
-  return () => {
-    window.removeEventListener('hashchange', checkTab);
-    clearInterval(interval);
-  };
-}, []);
+  useEffect(() => {
+    const checkTab = () => {
+      const savedTab = sessionStorage.getItem('dialerTab');
+      if (savedTab === 'messages') setActiveLeftTab('messages');
+      else if (savedTab === 'voicemail') setActiveLeftTab('voicemail');
+      else if (savedTab === 'calls') setActiveLeftTab('calls');
+      else setActiveLeftTab(getTabFromHash());
+    };
+    checkTab();
+    window.addEventListener('hashchange', checkTab);
+    const interval = setInterval(checkTab, 200);
+    return () => {
+      window.removeEventListener('hashchange', checkTab);
+      clearInterval(interval);
+    };
+  }, []);
 
   const handleMenuEnter = () => {
     if (menuTimeout.current) clearTimeout(menuTimeout.current);
@@ -59,6 +71,8 @@ useEffect(() => {
   const handleHangup = () => { setIsCallActive(false); setNumber(''); setShowKeypad(false); setIsMuted(false) }
   const handleSendMessage = () => { if (messageText.trim()) { setMessageText('') } }
   const handleDialNumber = (num) => { setNumber(num); setSelectedContact(null) }
+
+  const contactVoicemails = selectedContact ? (voicemails[selectedContact.id] || []) : [];
 
   const unreadMessages = 1; const missedCalls = 2; const newVoicemails = 2;
   const notificationParts = [];
@@ -90,7 +104,8 @@ useEffect(() => {
                   </button>
                 ) : null
               })
-            : communications.filter(c => c.messages.length > 0).map((c) => {
+            : activeLeftTab === 'messages'
+            ? communications.filter(c => c.messages.length > 0).map((c) => {
                 const lastMsg = c.messages[c.messages.length - 1]
                 return (
                   <div key={c.id} className="group relative">
@@ -110,6 +125,25 @@ useEffect(() => {
                       <Phone size={16} />
                     </button>
                   </div>
+                )
+              })
+            : Object.entries(voicemails).map(([contactId, vms]) => {
+                const contact = communications.find(c => c.id === parseInt(contactId));
+                if (!contact || vms.length === 0) return null;
+                const lastVm = vms[vms.length - 1];
+                const hasUnread = vms.some(v => !v.listened);
+                return (
+                  <button key={contactId} onClick={() => setSelectedContact(contact)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-700 transition-colors cursor-pointer ${selectedContact?.id === contact.id ? 'bg-gray-700' : ''}`}>
+                    <div className={`w-10 h-10 ${contact.avatarColor} rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0`}>{contact.initial}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-white truncate">{contact.name || contact.number}</span>
+                        {hasUnread && <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 ml-1"></span>}
+                      </div>
+                      <p className="text-xs text-gray-400 truncate mt-0.5">{lastVm.duration} • {formatTimeAgo(lastVm.timestamp)}</p>
+                    </div>
+                  </button>
                 )
               })
           }
@@ -167,7 +201,32 @@ useEffect(() => {
                         </div>
                       )
                     })
-                  : <p className="text-center text-gray-500 text-sm">No history yet</p>
+                  : activeLeftTab === 'voicemail' && contactVoicemails.length > 0
+                    ? contactVoicemails.map((vm) => (
+                        <div key={vm.id} className={`bg-gray-800 rounded-xl border p-4 ${vm.listened ? 'border-gray-700' : 'border-blue-600/50'}`}>
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              {!vm.listened && <span className="w-2 h-2 bg-blue-500 rounded-full"></span>}
+                              <span className="text-sm text-white font-medium">Voicemail</span>
+                            </div>
+                            <span className="text-xs text-gray-400">{vm.duration}</span>
+                          </div>
+                          <p className="text-sm text-gray-300 mb-3">{vm.transcription}</p>
+                          <p className="text-xs text-gray-500 mb-3">{formatTimeAgo(vm.timestamp)}</p>
+                          <div className="flex gap-2">
+                            <button className="flex items-center gap-1 text-xs text-gray-400 hover:text-white bg-gray-700 px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
+                              <Play size={14} /> Play
+                            </button>
+                            <button className="flex items-center gap-1 text-xs text-gray-400 hover:text-white bg-gray-700 px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
+                              <Download size={14} /> Download
+                            </button>
+                            <button className="flex items-center gap-1 text-xs text-red-400 hover:text-red-300 bg-gray-700 px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
+                              <Trash2 size={14} /> Delete
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    : <p className="text-center text-gray-500 text-sm">No history yet</p>
               }
             </div>
             {activeLeftTab === 'messages' && (
