@@ -6,8 +6,14 @@ const typeIcon = { incoming: ArrowDownLeft, outgoing: ArrowUpRight, missed: Phon
 const typeColor = { incoming: 'text-green-400', outgoing: 'text-blue-400', missed: 'text-red-400' }
 const keys = [['1', '2', '3'], ['4', '5', '6'], ['7', '8', '9'], ['*', '0', '#']]
 
+function getTabFromHash() {
+  const hash = window.location.hash;
+  const match = hash.match(/tab=(\w+)/);
+  return match && match[1] === 'messages' ? 'messages' : 'calls';
+}
+
 function DialerPage() {
-  const [activeLeftTab, setActiveLeftTab] = useState('calls')
+  const [activeLeftTab, setActiveLeftTab] = useState(getTabFromHash)
   const [number, setNumber] = useState('')
   const [isCallActive, setIsCallActive] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
@@ -20,9 +26,9 @@ function DialerPage() {
   const user = JSON.parse(localStorage.getItem('user') || '{}')
 
   useEffect(() => {
-    const hash = window.location.hash;
-    const match = hash.match(/tab=(\w+)/);
-    if (match && match[1] === 'messages') setActiveLeftTab('messages');
+    const onHashChange = () => setActiveLeftTab(getTabFromHash());
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
 
   const handleMenuEnter = () => {
