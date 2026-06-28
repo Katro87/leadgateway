@@ -1,43 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
-import { Phone, PhoneOff, Mic, MicOff, Pause, Keyboard, UserPlus, MessageSquare, ArrowUpRight, ArrowDownLeft, PhoneMissed, ChevronDown, Send, Paperclip, MoreVertical, User, X, Play, Download, Trash2, Check, Mail, Tag } from 'lucide-react'
+import { Phone, PhoneOff, Mic, MicOff, Pause, Keyboard, UserPlus, MessageSquare, ArrowUpRight, ArrowDownLeft, PhoneMissed, ChevronDown, Send, Paperclip, MoreVertical, User, X, Play, Download, Trash2, Check } from 'lucide-react'
 import { getContacts, createContact, updateContact } from '../api/contacts'
 
 const typeIcon = { incoming: ArrowDownLeft, outgoing: ArrowUpRight, missed: PhoneMissed }
 const typeColor = { incoming: 'text-green-400', outgoing: 'text-blue-400', missed: 'text-red-400' }
 const keys = [['1', '2', '3'], ['4', '5', '6'], ['7', '8', '9'], ['*', '0', '#']]
 const avatarColors = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-yellow-500', 'bg-pink-500', 'bg-teal-500']
-
-// Hard-coded call history and voicemail linked to contact names
-const hardCodedCalls = {
-  'Sarah Johnson': [
-    { id: 101, type: 'outgoing', status: 'Connected', timestamp: '2026-06-26T10:30:00' },
-    { id: 102, type: 'incoming', status: 'Voicemail', timestamp: '2026-06-25T14:00:00' },
-    { id: 105, type: 'outgoing', status: 'Connected', timestamp: '2026-06-24T09:00:00' },
-  ],
-  'sufyan': [
-    { id: 103, type: 'incoming', status: 'Voicemail', timestamp: '2026-06-26T10:05:00' },
-    { id: 106, type: 'missed', status: 'No Answer', timestamp: '2026-06-23T15:00:00' },
-  ],
-}
-
-const hardCodedMessages = {
-  'Sarah Johnson': [
-    { id: 201, sender: 'them', text: 'Hi! Are we still on for the demo tomorrow?', timestamp: '2026-06-26T10:15:00' },
-    { id: 202, sender: 'me', text: 'Yes, absolutely. 2 PM works great.', timestamp: '2026-06-26T10:20:00' },
-  ],
-  'sufyan': [
-    { id: 203, sender: 'them', text: 'Can you send me the proposal?', timestamp: '2026-06-26T09:15:00' },
-  ],
-}
-
-const hardCodedVoicemails = {
-  'Sarah Johnson': [
-    { id: 301, duration: '0:45', timestamp: '2026-06-25T14:00:00', listened: false, transcription: 'Hey Sarah, just checking in on the proposal. Call me back when you can.' },
-  ],
-  'sufyan': [
-    { id: 302, duration: '0:32', timestamp: '2026-06-26T10:05:00', listened: false, transcription: 'Hi, this is Mike. Please send over the documents when you get a chance.' },
-  ],
-}
 
 function formatTimeAgo(timestamp) {
   const now = new Date();
@@ -78,14 +46,42 @@ function DialerPage() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [showSaveModal, setShowSaveModal] = useState(false)
   const [saveForm, setSaveForm] = useState({ name: '', company: '', email: '', phone: '', tags: '' })
-  const [localMessages, setLocalMessages] = useState(hardCodedMessages)
   const menuRef = useRef(null)
   const menuTimeout = useRef(null)
   const user = JSON.parse(localStorage.getItem('user') || '{}')
 
-  useEffect(() => {
-    getContacts().then(setContacts).catch(console.error);
-  }, []);
+  const [callsData, setCallsData] = useState({
+    'Sarah Johnson': [
+      { id: 101, type: 'outgoing', status: 'Connected', timestamp: '2026-06-26T10:30:00' },
+      { id: 102, type: 'incoming', status: 'Voicemail', timestamp: '2026-06-25T14:00:00' },
+      { id: 105, type: 'outgoing', status: 'Connected', timestamp: '2026-06-24T09:00:00' },
+    ],
+    'sufyan': [
+      { id: 103, type: 'incoming', status: 'Voicemail', timestamp: '2026-06-26T10:05:00' },
+      { id: 106, type: 'missed', status: 'No Answer', timestamp: '2026-06-23T15:00:00' },
+    ],
+  })
+
+  const [messagesData, setMessagesData] = useState({
+    'Sarah Johnson': [
+      { id: 201, sender: 'them', text: 'Hi! Are we still on for the demo tomorrow?', timestamp: '2026-06-26T10:15:00' },
+      { id: 202, sender: 'me', text: 'Yes, absolutely. 2 PM works great.', timestamp: '2026-06-26T10:20:00' },
+    ],
+    'sufyan': [
+      { id: 203, sender: 'them', text: 'Can you send me the proposal?', timestamp: '2026-06-26T09:15:00' },
+    ],
+  })
+
+  const [voicemailsData, setVoicemailsData] = useState({
+    'Sarah Johnson': [
+      { id: 301, duration: '0:45', timestamp: '2026-06-25T14:00:00', listened: false, transcription: 'Hey Sarah, just checking in on the proposal. Call me back when you can.' },
+    ],
+    'sufyan': [
+      { id: 302, duration: '0:32', timestamp: '2026-06-26T10:05:00', listened: false, transcription: 'Hi, this is Mike. Please send over the documents when you get a chance.' },
+    ],
+  })
+
+  useEffect(() => { getContacts().then(setContacts).catch(console.error); }, []);
 
   useEffect(() => {
     const checkTab = () => {
@@ -101,9 +97,16 @@ function DialerPage() {
     return () => { window.removeEventListener('hashchange', checkTab); clearInterval(interval); };
   }, []);
 
-  const getContactCalls = (c) => hardCodedCalls[c.name] || [];
-  const getContactMessages = (c) => localMessages[c.name] || [];
-  const getContactVoicemails = (c) => hardCodedVoicemails[c.name] || [];
+  useEffect(() => {
+    if (selectedContact) {
+      const updated = contacts.find(c => c._id === selectedContact._id);
+      if (updated) setSelectedContact(updated);
+    }
+  }, [contacts]);
+
+  const getContactCalls = (c) => callsData[c.name] || [];
+  const getContactMessages = (c) => messagesData[c.name] || [];
+  const getContactVoicemails = (c) => voicemailsData[c.name] || [];
   const getContactInitial = (c) => (c.name || '?').charAt(0).toUpperCase();
   const getContactAvatarColor = (c) => avatarColors[Math.abs((c.name || '').split('').reduce((a, b) => a + b.charCodeAt(0), 0)) % avatarColors.length];
 
@@ -117,10 +120,7 @@ function DialerPage() {
   const handleSendMessage = () => {
     if (!messageText.trim() || !selectedContact) return;
     const newMsg = { id: Date.now(), sender: 'me', text: messageText, timestamp: new Date().toISOString() };
-    setLocalMessages(prev => ({
-      ...prev,
-      [selectedContact.name]: [...(prev[selectedContact.name] || []), newMsg],
-    }));
+    setMessagesData(prev => ({ ...prev, [selectedContact.name]: [...(prev[selectedContact.name] || []), newMsg] }));
     setMessageText('');
   };
 
@@ -128,11 +128,8 @@ function DialerPage() {
     if (!saveForm.name.trim()) return;
     try {
       await createContact({
-        name: saveForm.name,
-        company: saveForm.company,
-        email: saveForm.email,
-        phone: saveForm.phone,
-        tags: saveForm.tags ? saveForm.tags.split(',').map(t => t.trim()).filter(Boolean) : [],
+        name: saveForm.name, company: saveForm.company, email: saveForm.email,
+        phone: saveForm.phone, tags: saveForm.tags ? saveForm.tags.split(',').map(t => t.trim()).filter(Boolean) : [],
       });
       const updated = await getContacts();
       setContacts(updated);
@@ -148,10 +145,22 @@ function DialerPage() {
   };
 
   const handleDeleteCallEntry = (contactName, callId) => {
-    if (confirm('Delete this call entry?')) {
-      hardCodedCalls[contactName] = hardCodedCalls[contactName].filter(c => c.id !== callId);
-      setSelectedContact({ ...selectedContact });
-    }
+    setCallsData(prev => ({ ...prev, [contactName]: (prev[contactName] || []).filter(c => c.id !== callId) }));
+  };
+
+  const handleDeleteMessage = (contactName, msgId) => {
+    setMessagesData(prev => ({ ...prev, [contactName]: (prev[contactName] || []).filter(m => m.id !== msgId) }));
+  };
+
+  const handleDeleteVoicemail = (contactName, vmId) => {
+    setVoicemailsData(prev => ({ ...prev, [contactName]: (prev[contactName] || []).filter(v => v.id !== vmId) }));
+  };
+
+  const handleClearHistory = () => {
+    if (activeLeftTab === 'calls') setCallsData(prev => ({ ...prev, [selectedContact.name]: [] }));
+    else if (activeLeftTab === 'messages') setMessagesData(prev => ({ ...prev, [selectedContact.name]: [] }));
+    else if (activeLeftTab === 'voicemail') setVoicemailsData(prev => ({ ...prev, [selectedContact.name]: [] }));
+    setMenuOpen(false);
   };
 
   const notificationText = null;
@@ -182,7 +191,7 @@ function DialerPage() {
                 )
               })
             : activeLeftTab === 'messages'
-            ? contacts.filter(c => (localMessages[c.name] || []).length > 0).map((c) => {
+            ? contacts.filter(c => (messagesData[c.name] || []).length > 0).map((c) => {
                 const msgs = getContactMessages(c);
                 const lastMsg = msgs[msgs.length - 1];
                 return (
@@ -205,7 +214,7 @@ function DialerPage() {
                   </div>
                 )
               })
-            : contacts.filter(c => (hardCodedVoicemails[c.name] || []).length > 0).map((c) => {
+            : contacts.filter(c => (voicemailsData[c.name] || []).length > 0).map((c) => {
                 const vms = getContactVoicemails(c);
                 const lastVm = vms[vms.length - 1];
                 const hasUnread = vms.some(v => !v.listened);
@@ -243,9 +252,13 @@ function DialerPage() {
                 <button onClick={() => setMenuOpen(!menuOpen)} className="text-gray-400 hover:text-white transition-colors cursor-pointer"><MoreVertical size={18} /></button>
                 {menuOpen && (
                   <div className="absolute right-0 top-8 w-44 bg-gray-800 border border-gray-700 rounded-xl shadow-lg py-1 z-50">
-                    <button onClick={() => { setSaveForm({ name: selectedContact.name || '', company: selectedContact.company || '', email: selectedContact.email || '', phone: selectedContact.phone || '', tags: (selectedContact.tags || []).join(', ') }); setShowSaveModal(true); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center gap-2"><User size={14} /> Edit Contact</button>
-                    <button onClick={handleSwitchToMessages} className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center gap-2"><MessageSquare size={14} /> Message</button>
-                    <button onClick={() => { if (confirm('Delete this contact?')) { setSelectedContact(null); setMenuOpen(false); } }} className="w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-gray-700 transition-colors flex items-center gap-2"><Trash2 size={14} /> Delete</button>
+                    <button onClick={() => { setSaveForm({ name: selectedContact.name || '', company: selectedContact.company || '', email: selectedContact.email || '', phone: selectedContact.phone || '', tags: (selectedContact.tags || []).join(', ') }); setShowSaveModal(true); }}
+                      className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center gap-2"><User size={14} /> Edit Contact</button>
+                    <button onClick={handleSwitchToMessages}
+                      className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center gap-2"><MessageSquare size={14} /> Message</button>
+                    <hr className="border-gray-700 my-1" />
+                    <button onClick={handleClearHistory}
+                      className="w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-gray-700 transition-colors flex items-center gap-2"><Trash2 size={14} /> Clear History</button>
                   </div>
                 )}
               </div>
@@ -253,10 +266,12 @@ function DialerPage() {
             <div className="flex-1 overflow-y-auto p-5 space-y-4">
               {activeLeftTab === 'messages' && getContactMessages(selectedContact).length > 0
                 ? getContactMessages(selectedContact).map((msg) => (
-                    <div key={msg.id} className={`flex ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-xs px-4 py-2 rounded-xl text-sm ${msg.sender === 'me' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-200'}`}>
+                    <div key={msg.id} className={`flex group ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-xs px-4 py-2 rounded-xl text-sm relative ${msg.sender === 'me' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-200'}`}>
                         <p>{msg.text}</p><p className="text-xs mt-1 opacity-70">{formatTimeAgo(msg.timestamp)}</p>
                       </div>
+                      <button onClick={() => handleDeleteMessage(selectedContact.name, msg.id)}
+                        className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400 transition-all cursor-pointer ml-1 self-center"><Trash2 size={14} /></button>
                     </div>
                   ))
                 : activeLeftTab === 'calls' && getContactCalls(selectedContact).length > 0
@@ -268,7 +283,8 @@ function DialerPage() {
                             <Icon size={16} className={typeColor[call.type]} />
                             <div><p className="text-sm text-white">{call.status}</p><p className="text-xs text-gray-400">{formatCallTime(call.timestamp)}</p></div>
                           </div>
-                          <button onClick={() => handleDeleteCallEntry(selectedContact.name, call.id)} className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400 transition-all cursor-pointer"><Trash2 size={14} /></button>
+                          <button onClick={() => handleDeleteCallEntry(selectedContact.name, call.id)}
+                            className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400 transition-all cursor-pointer"><Trash2 size={14} /></button>
                         </div>
                       )
                     })
@@ -284,6 +300,8 @@ function DialerPage() {
                           <div className="flex gap-2">
                             <button className="flex items-center gap-1 text-xs text-gray-400 hover:text-white bg-gray-700 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"><Play size={14} /> Play</button>
                             <button className="flex items-center gap-1 text-xs text-gray-400 hover:text-white bg-gray-700 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"><Download size={14} /> Download</button>
+                            <button onClick={() => handleDeleteVoicemail(selectedContact.name, vm.id)}
+                              className="flex items-center gap-1 text-xs text-red-400 hover:text-red-300 bg-gray-700 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"><Trash2 size={14} /> Delete</button>
                           </div>
                         </div>
                       ))

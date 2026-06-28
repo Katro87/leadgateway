@@ -14,13 +14,14 @@ function Sidebar() {
   const location = useLocation()
   const navigate = useNavigate()
 
-  const isActive = (item) => {
+ const isActive = (item) => {
     if (item.tab) {
-      const params = new URLSearchParams(location.search || window.location.hash.split('?')[1]);
+      const hash = window.location.hash;
+      const params = new URLSearchParams(hash.split('?')[1] || '');
       const currentTab = params.get('tab') || 'calls';
-      return currentTab === item.tab;
+      return location.pathname === '/dialer' && currentTab === item.tab;
     }
-    return location.pathname === item.path && !window.location.hash.includes('tab=');
+    return location.pathname === item.path;
   }
 
   const handleClick = (item) => {
