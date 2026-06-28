@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Phone, PhoneOff, Mic, MicOff, Pause, Keyboard, UserPlus, MessageSquare, ArrowUpRight, ArrowDownLeft, PhoneMissed, ChevronDown, Send, Paperclip, MoreVertical, User, X, Play, Download, Trash2, Check, Loader2 } from 'lucide-react'
+import { Phone, PhoneOff, Mic, MicOff, Pause, Keyboard, UserPlus, MessageSquare, ArrowUpRight, ArrowDownLeft, PhoneMissed, ChevronDown, Send, Paperclip, MoreVertical, User, X, Play, Download, Trash2, Check, Loader2, Plus } from 'lucide-react'
 import { getContacts, createContact } from '../api/contacts';
 import { getCalls, createCall, deleteCall } from '../api/calls'
 import { getMessages as fetchMessages, sendMessage as sendMsg, deleteMessage } from '../api/messages'
@@ -189,28 +189,34 @@ function DialerPage() {
               )
             })
           ) : activeLeftTab === 'messages' ? (
-            groupedMessages.map((g, i) => {
-              const lastMsg = g.messages[0];
-              return (
-                <div key={i} className="group relative">
-                  <button onClick={() => setSelectedContact(g.contact || { name: g.name, phone: g.number })}
-                    className={`w-full flex items-center gap-3 px-4 py-3 pr-10 text-left hover:bg-gray-700 transition-colors cursor-pointer ${selectedContact?.phone === g.number ? 'bg-gray-700' : ''}`}>
-                    <div className={`w-10 h-10 ${avatarColors[i % avatarColors.length]} rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0`}>{g.name.charAt(0)}</div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-white truncate">{g.name}</span>
-                        <span className="text-xs text-gray-500 flex-shrink-0 ml-1">{formatTimeAgo(lastMsg.createdAt)}</span>
+            <>
+                <button onClick={() => { setSelectedContact(null); }} className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-700 transition-colors cursor-pointer border-b border-gray-700">
+                  <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0"><Plus size={18} className="text-white" /></div>
+                  <span className="text-sm font-medium text-blue-400">+ Send new message</span>
+                </button>
+                {groupedMessages.map((g, i) => {
+                const lastMsg = g.messages[0];
+                return (
+                  <div key={i} className="group relative">
+                    <button onClick={() => setSelectedContact(g.contact || { name: g.name, phone: g.number })}
+                      className={`w-full flex items-center gap-3 px-4 py-3 pr-10 text-left hover:bg-gray-700 transition-colors cursor-pointer ${selectedContact?.phone === g.number ? 'bg-gray-700' : ''}`}>
+                      <div className={`w-10 h-10 ${avatarColors[i % avatarColors.length]} rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0`}>{g.name.charAt(0)}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-white truncate">{g.name}</span>
+                          <span className="text-xs text-gray-500 flex-shrink-0 ml-1">{formatTimeAgo(lastMsg.createdAt)}</span>
+                        </div>
+                        <p className="text-xs text-gray-400 truncate mt-0.5">{lastMsg.text}</p>
                       </div>
-                      <p className="text-xs text-gray-400 truncate mt-0.5">{lastMsg.text}</p>
-                    </div>
-                  </button>
-                  <button onClick={(e) => { e.stopPropagation(); handleDialNumber(g.number); }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-white transition-all cursor-pointer bg-gray-700 p-1.5 rounded-full">
-                    <Phone size={16} />
-                  </button>
-                </div>
-              )
-            })
+                    </button>
+                    <button onClick={(e) => { e.stopPropagation(); handleDialNumber(g.number); }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-white transition-all cursor-pointer bg-gray-700 p-1.5 rounded-full">
+                      <Phone size={16} />
+                    </button>
+                  </div>
+                               )
+              })}
+            </>
           ) : (
             <div className="text-center py-12 text-gray-500 text-sm">No voicemails yet</div>
           )}

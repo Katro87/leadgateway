@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Mail, Phone, FileText, Pencil, Check, X, AlertCircle, Camera, Globe, Users, EyeOff, Crop } from 'lucide-react';
+import { ArrowLeft, User, Mail, Phone, FileText, Pencil, Check, X, AlertCircle, Camera, Globe, Users, EyeOff, Crop, Maximize2 } from 'lucide-react';
 import ReactCrop from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 
@@ -22,6 +22,7 @@ function ProfilePage() {
   const [crop, setCrop] = useState({ unit: '%', width: 80, height: 80, x: 10, y: 10 });
   const [completedCrop, setCompletedCrop] = useState(null);
   const [pendingAvatar, setPendingAvatar] = useState(null);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const imgRef = useRef(null);
   const fileRef = useRef(null);
 
@@ -29,7 +30,7 @@ function ProfilePage() {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => { setImgSrc(reader.result); setCropMode(true); };
+    reader.onload = () => { setImgSrc(reader.result); setCropMode(true); setCrop({ unit: '%', width: 80, height: 80, x: 10, y: 10 }); };
     reader.readAsDataURL(file);
   };
 
@@ -43,14 +44,7 @@ function ProfilePage() {
     canvas.width = 400;
     canvas.height = 400;
     const ctx = canvas.getContext('2d');
-    ctx.drawImage(
-      imgRef.current,
-      completedCrop.x * scaleX,
-      completedCrop.y * scaleY,
-      completedCrop.width * scaleX,
-      completedCrop.height * scaleY,
-      0, 0, 400, 400
-    );
+    ctx.drawImage(imgRef.current, completedCrop.x * scaleX, completedCrop.y * scaleY, completedCrop.width * scaleX, completedCrop.height * scaleY, 0, 0, 400, 400);
     return canvas;
   };
 
@@ -95,8 +89,7 @@ function ProfilePage() {
         method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ photoVisibility }),
       });
-      const finalAvatar = pendingAvatar || avatar;
-      const updatedUser = { ...storedUser, name: data.name, avatar: finalAvatar, photoVisibility };
+      const updatedUser = { ...storedUser, name: data.name, avatar: data.avatar || avatar, photoVisibility };
       localStorage.setItem('user', JSON.stringify(updatedUser));
       localStorage.setItem('bio', bio); localStorage.setItem('phone', phone);
       setPendingAvatar(null);
@@ -123,12 +116,13 @@ function ProfilePage() {
         <ArrowLeft size={16} /> Back to Dashboard
       </button>
 
+      {/* Crop Modal */}
       {cropMode && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 w-full max-w-md">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 w-full max-w-lg">
             <h3 className="text-lg font-bold text-white mb-4">Crop Profile Photo</h3>
             <div className="flex justify-center">
-              <div className="w-[280px] h-[280px] relative rounded-full overflow-hidden">
+              <div className="w-[300px] h-[300px] relative">
                 <ReactCrop
                   crop={crop}
                   onChange={c => setCrop(c)}
@@ -136,17 +130,20 @@ function ProfilePage() {
                   circularCrop
                   aspect={1}
                   locked
+                  ruleOfThirds
                   className="w-full h-full"
+                  style={{ borderRadius: '50%', overflow: 'hidden' }}
                 >
                   <img
                     src={imgSrc}
                     onLoad={(e) => onImageLoad(e.target)}
                     alt="Crop"
-                    className="w-full h-full object-cover"
+                    style={{ maxWidth: '100%', maxHeight: '100%', display: 'block' }}
                   />
                 </ReactCrop>
               </div>
             </div>
+            <p className="text-xs text-gray-500 text-center mt-3">Drag the image to position it. The circle stays fixed.</p>
             <div className="flex gap-3 mt-4">
               <button onClick={handleUploadCropped} disabled={uploading}
                 className="flex-1 bg-blue-600 hover:bg-blue-700 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer flex items-center justify-center gap-2">
@@ -159,10 +156,23 @@ function ProfilePage() {
         </div>
       )}
 
+      {/* Lightbox */}
+      {lightboxOpen && avatar && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 cursor-pointer" onClick={() => setLightboxOpen(false)}>
+          <button onClick={() => setLightboxOpen(false)} className="absolute top-4 right-4 text-white hover:text-gray-300 z-10"><X size={28} /></button>
+          <img src={avatar} alt="Profile" className="max-w-[90vw] max-h-[90vh] rounded-2xl object-contain" onClick={(e) => e.stopPropagation()} />
+        </div>
+      )}
+
       <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 text-center">
-        <div className="relative inline-block">
+        <div className="relative inline-block group">
           {avatar ? (
-            <img src={avatar} alt="Avatar" className="w-24 h-24 rounded-full object-cover mx-auto border-2 border-gray-600" />
+            <>
+              <img src={avatar} alt="Avatar" className="w-24 h-24 rounded-full object-cover mx-auto border-2 border-gray-600 cursor-pointer" onClick={() => setLightboxOpen(true)} />
+              <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center cursor-pointer" onClick={() => setLightboxOpen(true)}>
+                <Maximize2 size={20} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+            </>
           ) : (
             <div className="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center mx-auto">
               <User size={40} className="text-white" />
@@ -194,41 +204,14 @@ function ProfilePage() {
           <h3 className="text-lg font-semibold text-white flex items-center gap-2"><Pencil size={18} /> Edit Profile</h3>
           {error && <div className="bg-red-900/30 border border-red-700/50 text-red-400 px-4 py-3 rounded-lg text-sm flex items-center gap-2"><AlertCircle size={16} /> {error}</div>}
           {msg && <div className="bg-green-900/30 border border-green-700/50 text-green-400 px-4 py-3 rounded-lg text-sm flex items-center gap-2"><Check size={16} /> {msg}</div>}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2"><User size={14} /> Full Name</label>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2"><Mail size={14} /> Email</label>
-            <input type="email" value={storedUser.email} disabled className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-gray-500 cursor-not-allowed" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2"><Phone size={14} /> Phone</label>
-            <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1 (555) 123-4567" className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2"><FileText size={14} /> Bio</label>
-            <textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell us about yourself..." className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 resize-none" rows="3" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-3">Photo Visibility</label>
-            <div className="space-y-2">
-              {visibilityOptions.map((opt) => { const Icon = opt.icon; return (
-                <button key={opt.value} type="button" onClick={() => setPhotoVisibility(opt.value)}
-                  className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-pointer text-left ${photoVisibility === opt.value ? 'border-blue-500 bg-blue-500/10' : 'border-gray-600 hover:border-gray-500'}`}>
-                  <Icon size={18} className={photoVisibility === opt.value ? 'text-blue-400' : 'text-gray-400'} />
-                  <div><p className="text-sm font-medium text-white">{opt.label}</p><p className="text-xs text-gray-400">{opt.desc}</p></div>
-                </button>
-              )})}
-            </div>
-          </div>
+          <div><label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2"><User size={14} /> Full Name</label><input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500" /></div>
+          <div><label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2"><Mail size={14} /> Email</label><input type="email" value={storedUser.email} disabled className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-gray-500 cursor-not-allowed" /></div>
+          <div><label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2"><Phone size={14} /> Phone</label><input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1 (555) 123-4567" className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500" /></div>
+          <div><label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2"><FileText size={14} /> Bio</label><textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell us about yourself..." className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 resize-none" rows="3" /></div>
+          <div><label className="block text-sm font-medium text-gray-300 mb-3">Photo Visibility</label><div className="space-y-2">{visibilityOptions.map((opt) => { const Icon = opt.icon; return (<button key={opt.value} type="button" onClick={() => setPhotoVisibility(opt.value)} className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-pointer text-left ${photoVisibility === opt.value ? 'border-blue-500 bg-blue-500/10' : 'border-gray-600 hover:border-gray-500'}`}><Icon size={18} className={photoVisibility === opt.value ? 'text-blue-400' : 'text-gray-400'} /><div><p className="text-sm font-medium text-white">{opt.label}</p><p className="text-xs text-gray-400">{opt.desc}</p></div></button>)})}</div></div>
           <div className="flex gap-3">
-            <button type="submit" disabled={saving} className="bg-blue-600 hover:bg-blue-700 px-6 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2">
-              <Check size={16} /> {saving ? 'Saving...' : 'Save Profile'}
-            </button>
-            <button type="button" onClick={handleCancel} className="bg-gray-700 hover:bg-gray-600 px-6 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer flex items-center gap-2">
-              <X size={16} /> Cancel
-            </button>
+            <button type="submit" disabled={saving} className="bg-blue-600 hover:bg-blue-700 px-6 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"><Check size={16} /> {saving ? 'Saving...' : 'Save Profile'}</button>
+            <button type="button" onClick={handleCancel} className="bg-gray-700 hover:bg-gray-600 px-6 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer flex items-center gap-2"><X size={16} /> Cancel</button>
           </div>
         </form>
       )}
