@@ -1,8 +1,16 @@
 import { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, User, Mail, Phone, FileText, Pencil, Check, X, AlertCircle, Camera, Globe, Users, EyeOff, Crop, Maximize2 } from 'lucide-react';
-import ReactCrop from 'react-image-crop';
+import ReactCrop, { centerCrop, makeAspectCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
+
+function centerAspectCrop(mediaWidth, mediaHeight, aspect) {
+  return centerCrop(
+    makeAspectCrop({ unit: '%', width: 80 }, aspect, mediaWidth, mediaHeight),
+    mediaWidth,
+    mediaHeight,
+  );
+}
 
 function ProfilePage() {
   const navigate = useNavigate();
@@ -19,7 +27,7 @@ function ProfilePage() {
   const [uploading, setUploading] = useState(false);
   const [cropMode, setCropMode] = useState(false);
   const [imgSrc, setImgSrc] = useState('');
-  const [crop, setCrop] = useState({ unit: '%', width: 80, height: 80, x: 10, y: 10 });
+  const [crop, setCrop] = useState(null);
   const [completedCrop, setCompletedCrop] = useState(null);
   const [pendingAvatar, setPendingAvatar] = useState(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -30,11 +38,16 @@ function ProfilePage() {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => { setImgSrc(reader.result); setCropMode(true); setCrop({ unit: '%', width: 80, height: 80, x: 10, y: 10 }); };
+    reader.onload = () => { setImgSrc(reader.result); setCropMode(true); setCrop(null); setCompletedCrop(null); };
     reader.readAsDataURL(file);
   };
 
-  const onImageLoad = useCallback((img) => { imgRef.current = img; }, []);
+  const onImageLoad = useCallback((img) => {
+    imgRef.current = img;
+    const { width, height } = img;
+    const crop = centerAspectCrop(width, height, 1);
+    setCrop(crop);
+  }, []);
 
   const getCroppedImg = () => {
     if (!completedCrop || !imgRef.current) return;
@@ -116,13 +129,12 @@ function ProfilePage() {
         <ArrowLeft size={16} /> Back to Dashboard
       </button>
 
-      {/* Crop Modal */}
       {cropMode && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 w-full max-w-lg">
             <h3 className="text-lg font-bold text-white mb-4">Crop Profile Photo</h3>
             <div className="flex justify-center">
-              <div className="w-[300px] h-[300px] relative">
+              {crop && (
                 <ReactCrop
                   crop={crop}
                   onChange={c => setCrop(c)}
@@ -131,17 +143,15 @@ function ProfilePage() {
                   aspect={1}
                   locked
                   ruleOfThirds
-                  className="w-full h-full"
-                  style={{ borderRadius: '50%', overflow: 'hidden' }}
                 >
                   <img
                     src={imgSrc}
                     onLoad={(e) => onImageLoad(e.target)}
                     alt="Crop"
-                    style={{ maxWidth: '100%', maxHeight: '100%', display: 'block' }}
+                    style={{ maxWidth: '100%', maxHeight: '70vh' }}
                   />
                 </ReactCrop>
-              </div>
+              )}
             </div>
             <p className="text-xs text-gray-500 text-center mt-3">Drag the image to position it. The circle stays fixed.</p>
             <div className="flex gap-3 mt-4">
@@ -156,7 +166,6 @@ function ProfilePage() {
         </div>
       )}
 
-      {/* Lightbox */}
       {lightboxOpen && avatar && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 cursor-pointer" onClick={() => setLightboxOpen(false)}>
           <button onClick={() => setLightboxOpen(false)} className="absolute top-4 right-4 text-white hover:text-gray-300 z-10"><X size={28} /></button>
