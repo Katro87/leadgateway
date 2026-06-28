@@ -13,7 +13,9 @@ export const apiFetch = async (endpoint, options = {}) => {
 
   const data = await res.json();
 
-  if (res.status === 401 && token) {
+  const isAuthEndpoint = endpoint.includes('/login') || endpoint.includes('/signup') || endpoint.includes('/forgot-password') || endpoint.includes('/reset-password');
+
+  if (res.status === 401 && token && !isAuthEndpoint) {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     window.location.hash = '#/login';
