@@ -1,18 +1,17 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Phone, Users, MessageSquare, Clock, Plus, Send, Loader2 } from 'lucide-react'
+import { Phone, Users, MessageSquare, Clock, Plus, Send, Loader2, User } from 'lucide-react'
 
 function DashboardPage() {
   const [stats, setStats] = useState({ totalCalls: 0, contacts: 0, messages: 0, talkTime: '0h 0m' })
-  const [userName, setUserName] = useState('')
+  const [userData, setUserData] = useState(JSON.parse(localStorage.getItem('user') || '{}'))
   const [loading, setLoading] = useState(true)
   const [callFilter, setCallFilter] = useState('today')
   const [recentCalls, setRecentCalls] = useState([])
   const navigate = useNavigate()
 
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    setUserName(user.name || 'User');
+    setUserData(JSON.parse(localStorage.getItem('user') || '{}'));
     const token = localStorage.getItem('token');
     Promise.all([
       fetch('https://api.leadgateway.tech/api/stats', { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
@@ -59,9 +58,18 @@ function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className="text-2xl font-bold text-white">Dashboard</h2>
-        <p className="text-gray-400 text-sm mt-1">Welcome back, {userName}. Here&apos;s your overview.</p>
+      <div className="flex items-center gap-4">
+        <div className="w-14 h-14 rounded-full overflow-hidden bg-blue-600 flex items-center justify-center flex-shrink-0">
+          {userData.avatar ? (
+            <img src={userData.avatar} alt="" className="w-14 h-14 object-cover" />
+          ) : (
+            <User size={28} className="text-white" />
+          )}
+        </div>
+        <div>
+          <h2 className="text-2xl font-bold text-white">Dashboard</h2>
+          <p className="text-gray-400 text-sm mt-1">Welcome back, {userData.name || 'User'}. Here&apos;s your overview.</p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
