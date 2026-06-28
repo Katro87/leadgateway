@@ -51,6 +51,7 @@ function DialerPage() {
   const [showSaveModal, setShowSaveModal] = useState(false)
   const [saveForm, setSaveForm] = useState({ name: '', company: '', email: '', phone: '', tags: '' })
   const [loading, setLoading] = useState(true)
+  const prevTabRef = useRef(activeLeftTab)
   const menuRef = useRef(null)
   const menuTimeout = useRef(null)
   const user = JSON.parse(localStorage.getItem('user') || '{}')
@@ -72,11 +73,17 @@ function DialerPage() {
   useEffect(() => {
     const checkTab = () => {
       const savedTab = sessionStorage.getItem('dialerTab');
-      if (savedTab === 'messages') setActiveLeftTab('messages');
-      else if (savedTab === 'voicemail') setActiveLeftTab('voicemail');
-      else if (savedTab === 'calls') setActiveLeftTab('calls');
-      else setActiveLeftTab(getTabFromHash());
-      setSelectedContact(null);
+      let newTab;
+      if (savedTab === 'messages') newTab = 'messages';
+      else if (savedTab === 'voicemail') newTab = 'voicemail';
+      else if (savedTab === 'calls') newTab = 'calls';
+      else newTab = getTabFromHash();
+
+      if (newTab !== prevTabRef.current) {
+        prevTabRef.current = newTab;
+        setActiveLeftTab(newTab);
+        setSelectedContact(null);
+      }
     };
     checkTab();
     window.addEventListener('hashchange', checkTab);
@@ -126,7 +133,9 @@ function DialerPage() {
 
   const handleSwitchToMessages = () => {
     sessionStorage.setItem('dialerTab', 'messages');
-    setActiveLeftTab('messages'); setMenuOpen(false);
+    setActiveLeftTab('messages');
+    prevTabRef.current = 'messages';
+    setMenuOpen(false);
   };
 
   const handleDeleteCall = async (id) => {
@@ -140,7 +149,6 @@ function DialerPage() {
   const getActiveContactCalls = () => selectedContact ? getCallsForContact(selectedContact) : [];
   const getActiveContactMessages = () => selectedContact ? getMessagesForContact(selectedContact) : [];
 
-  // Group calls by unique number for left pane
   const uniqueNumbers = [...new Set(calls.map(c => c.number))];
   const groupedCalls = uniqueNumbers.map(num => {
     const numCalls = calls.filter(c => c.number === num);
