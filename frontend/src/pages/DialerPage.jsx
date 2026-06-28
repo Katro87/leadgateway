@@ -1,13 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
-import { Phone, PhoneOff, Mic, MicOff, Pause, Keyboard, UserPlus, MessageSquare, ArrowUpRight, ArrowDownLeft, PhoneMissed, ChevronDown, Send, Paperclip, MoreVertical, User, X, Play, Download, Trash2 } from 'lucide-react'
-import { communications, formatTimeAgo, formatCallTime } from '../data/communications'
+import { Phone, PhoneOff, Mic, MicOff, Pause, Keyboard, UserPlus, MessageSquare, ArrowUpRight, ArrowDownLeft, PhoneMissed, ChevronDown, Send, Paperclip, MoreVertical, User, X, Play, Download, Trash2, Check } from 'lucide-react'
+import { communications as initialCommunications, formatTimeAgo, formatCallTime } from '../data/communications'
 
 const typeIcon = { incoming: ArrowDownLeft, outgoing: ArrowUpRight, missed: PhoneMissed }
 const typeColor = { incoming: 'text-green-400', outgoing: 'text-blue-400', missed: 'text-red-400' }
 const keys = [['1', '2', '3'], ['4', '5', '6'], ['7', '8', '9'], ['*', '0', '#']]
 
-// Voicemail data per contact
-const voicemails = {
+const voicemailsData = {
   1: [
     { id: 301, duration: '0:45', timestamp: '2026-06-26T10:05:00', listened: false, transcription: 'Hey, just checking in on the proposal. Call me back when you can.' },
     { id: 302, duration: '1:12', timestamp: '2026-06-23T17:00:00', listened: true, transcription: 'Following up on our meeting. Looking forward to hearing from you.' },
@@ -30,6 +29,8 @@ function getTabFromHash() {
 
 function DialerPage() {
   const [activeLeftTab, setActiveLeftTab] = useState(getTabFromHash)
+  const [communications, setCommunications] = useState(initialCommunications)
+  const [voicemails, setVoicemails] = useState(voicemailsData)
   const [number, setNumber] = useState('')
   const [isCallActive, setIsCallActive] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
@@ -37,6 +38,8 @@ function DialerPage() {
   const [selectedContact, setSelectedContact] = useState(null)
   const [messageText, setMessageText] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
+  const [showSaveModal, setShowSaveModal] = useState(false)
+  const [saveForm, setSaveForm] = useState({ name: '', number: '' })
   const menuRef = useRef(null)
   const menuTimeout = useRef(null)
   const user = JSON.parse(localStorage.getItem('user') || '{}')
@@ -58,6 +61,13 @@ function DialerPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (selectedContact) {
+      const updated = communications.find(c => c.id === selectedContact.id);
+      if (updated) setSelectedContact(updated);
+    }
+  }, [communications]);
+
   const handleMenuEnter = () => {
     if (menuTimeout.current) clearTimeout(menuTimeout.current);
     setMenuOpen(true);
@@ -69,8 +79,63 @@ function DialerPage() {
   const handleKeyPress = (v) => setNumber((p) => p + v)
   const handleCall = () => { if (number.trim()) setIsCallActive(true) }
   const handleHangup = () => { setIsCallActive(false); setNumber(''); setShowKeypad(false); setIsMuted(false) }
-  const handleSendMessage = () => { if (messageText.trim()) { setMessageText('') } }
   const handleDialNumber = (num) => { setNumber(num); setSelectedContact(null) }
+
+  const handleSendMessage = () => {
+    if (!messageText.trim() || !selectedContact) return;
+    const newMsg = {
+      id: Date.now(),
+      sender: 'me',
+      text: messageText,
+      timestamp: new Date().toISOString(),
+    };
+    setCommunications(prev => prev.map(c => {
+      if (c.id === selectedContact.id) {
+        return { ...c, messages: [...c.messages, newMsg] };
+      }
+      return c;
+    }));
+    setMessageText('');
+  };
+
+  const handleSaveContact = () => {
+    if (!saveForm.name.trim()) return;
+    setCommunications(prev => prev.map(c => {
+      if (c.id === selectedContact.id) {
+        return { ...c, name: saveForm.name, isSaved: true };
+      }
+      return c;
+    }));
+    setShowSaveModal(false);
+    setMenuOpen(false);
+  };
+
+  const handleEditContact = () => {
+    setSaveForm({ name: selectedContact?.name || '', number: selectedContact?.number || '' });
+    setShowSaveModal(true);
+  };
+
+  const handleBlock = () => {
+    setCommunications(prev => prev.map(c => {
+      if (c.id === selectedContact.id) return { ...c, isBlocked: !c.isBlocked };
+      return c;
+    }));
+    setMenuOpen(false);
+  };
+
+  const handleDelete = () => {
+    if (confirm('Delete this entry?')) {
+      setCommunications(prev => prev.filter(c => c.id !== selectedContact.id));
+      setSelectedContact(null);
+      setMenuOpen(false);
+    }
+  };
+
+  const handleSwitchToMessages = () => {
+    sessionStorage.setItem('dialerTab', 'messages');
+    setActiveLeftTab('messages');
+    setMenuOpen(false);
+  };
 
   const contactVoicemails = selectedContact ? (voicemails[selectedContact.id] || []) : [];
 
@@ -169,14 +234,16 @@ function DialerPage() {
                 {menuOpen && (
                   <div className="absolute right-0 top-8 w-44 bg-gray-800 border border-gray-700 rounded-xl shadow-lg py-1 z-50">
                     {selectedContact.isSaved ? (
-                      <button onClick={() => setMenuOpen(false)} className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center gap-2"><User size={14} /> Edit Contact</button>
+                      <button onClick={handleEditContact} className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center gap-2"><User size={14} /> Edit Contact</button>
                     ) : (
-                      <button onClick={() => setMenuOpen(false)} className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center gap-2"><UserPlus size={14} /> Save Contact</button>
+                      <button onClick={() => { setSaveForm({ name: '', number: selectedContact.number }); setShowSaveModal(true); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center gap-2"><UserPlus size={14} /> Save Contact</button>
                     )}
-                    <button onClick={() => setMenuOpen(false)} className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center gap-2"><MessageSquare size={14} /> Message</button>
-                    <button onClick={() => setMenuOpen(false)} className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center gap-2">🚫 Block</button>
+                    <button onClick={handleSwitchToMessages} className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center gap-2"><MessageSquare size={14} /> Message</button>
+                    <button onClick={handleBlock} className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center gap-2">
+                      {selectedContact.isBlocked ? '✅ Unblock' : '🚫 Block'}
+                    </button>
                     <hr className="border-gray-700 my-1" />
-                    <button onClick={() => { if (confirm('Delete this entry?')) { setSelectedContact(null); setMenuOpen(false); } }} className="w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-gray-700 transition-colors flex items-center gap-2">🗑️ Delete</button>
+                    <button onClick={handleDelete} className="w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-gray-700 transition-colors flex items-center gap-2">🗑️ Delete</button>
                   </div>
                 )}
               </div>
@@ -214,15 +281,9 @@ function DialerPage() {
                           <p className="text-sm text-gray-300 mb-3">{vm.transcription}</p>
                           <p className="text-xs text-gray-500 mb-3">{formatTimeAgo(vm.timestamp)}</p>
                           <div className="flex gap-2">
-                            <button className="flex items-center gap-1 text-xs text-gray-400 hover:text-white bg-gray-700 px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
-                              <Play size={14} /> Play
-                            </button>
-                            <button className="flex items-center gap-1 text-xs text-gray-400 hover:text-white bg-gray-700 px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
-                              <Download size={14} /> Download
-                            </button>
-                            <button className="flex items-center gap-1 text-xs text-red-400 hover:text-red-300 bg-gray-700 px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
-                              <Trash2 size={14} /> Delete
-                            </button>
+                            <button className="flex items-center gap-1 text-xs text-gray-400 hover:text-white bg-gray-700 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"><Play size={14} /> Play</button>
+                            <button className="flex items-center gap-1 text-xs text-gray-400 hover:text-white bg-gray-700 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"><Download size={14} /> Download</button>
+                            <button className="flex items-center gap-1 text-xs text-red-400 hover:text-red-300 bg-gray-700 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"><Trash2 size={14} /> Delete</button>
                           </div>
                         </div>
                       ))
@@ -295,6 +356,27 @@ function DialerPage() {
           </div>
         )}
       </div>
+
+      {/* Save/Edit Contact Modal */}
+      {showSaveModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowSaveModal(false)}>
+          <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-white mb-4">{selectedContact?.isSaved ? 'Edit Contact' : 'Save Contact'}</h3>
+            <div className="space-y-4">
+              <input type="text" placeholder="Name" value={saveForm.name}
+                onChange={(e) => setSaveForm({ ...saveForm, name: e.target.value })}
+                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500" />
+              <input type="text" placeholder="Number" value={saveForm.number}
+                onChange={(e) => setSaveForm({ ...saveForm, number: e.target.value })}
+                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500" />
+              <div className="flex gap-3">
+                <button onClick={handleSaveContact} className="flex-1 bg-blue-600 hover:bg-blue-700 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer flex items-center justify-center gap-2"><Check size={16} /> Save</button>
+                <button onClick={() => setShowSaveModal(false)} className="flex-1 bg-gray-700 hover:bg-gray-600 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer">Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
