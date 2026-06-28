@@ -19,10 +19,11 @@ function ProfilePage() {
   const [uploading, setUploading] = useState(false);
   const [cropMode, setCropMode] = useState(false);
   const [imgSrc, setImgSrc] = useState('');
-const [crop, setCrop] = useState({ unit: '%', width: 80, height: 80, x: 10, y: 10 });  const [completedCrop, setCompletedCrop] = useState(null);
+  const [crop, setCrop] = useState({ unit: '%', width: 80, height: 80, x: 10, y: 10 });
+  const [completedCrop, setCompletedCrop] = useState(null);
+  const [pendingAvatar, setPendingAvatar] = useState(null);
   const imgRef = useRef(null);
   const fileRef = useRef(null);
-  const canvasRef = useRef(null);
 
   const onSelectFile = (e) => {
     const file = e.target.files[0];
@@ -39,10 +40,17 @@ const [crop, setCrop] = useState({ unit: '%', width: 80, height: 80, x: 10, y: 1
     const canvas = document.createElement('canvas');
     const scaleX = imgRef.current.naturalWidth / imgRef.current.width;
     const scaleY = imgRef.current.naturalHeight / imgRef.current.height;
-    canvas.width = completedCrop.width * scaleX;
-    canvas.height = completedCrop.height * scaleY;
+    canvas.width = 400;
+    canvas.height = 400;
     const ctx = canvas.getContext('2d');
-    ctx.drawImage(imgRef.current, completedCrop.x * scaleX, completedCrop.y * scaleY, completedCrop.width * scaleX, completedCrop.height * scaleY, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(
+      imgRef.current,
+      completedCrop.x * scaleX,
+      completedCrop.y * scaleY,
+      completedCrop.width * scaleX,
+      completedCrop.height * scaleY,
+      0, 0, 400, 400
+    );
     return canvas;
   };
 
@@ -61,9 +69,8 @@ const [crop, setCrop] = useState({ unit: '%', width: 80, height: 80, x: 10, y: 1
         const data = await res.json();
         if (!res.ok) throw new Error(data.message);
         const avatarUrl = `https://api.leadgateway.tech${data.avatar}`;
+        setPendingAvatar(avatarUrl);
         setAvatar(avatarUrl);
-        const updatedUser = { ...storedUser, avatar: avatarUrl };
-        localStorage.setItem('user', JSON.stringify(updatedUser));
         setCropMode(false);
         setImgSrc('');
       } catch (err) { setError(err.message); }
@@ -88,9 +95,11 @@ const [crop, setCrop] = useState({ unit: '%', width: 80, height: 80, x: 10, y: 1
         method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ photoVisibility }),
       });
-      const updatedUser = { ...storedUser, name: data.name, avatar, photoVisibility };
+      const finalAvatar = pendingAvatar || avatar;
+      const updatedUser = { ...storedUser, name: data.name, avatar: finalAvatar, photoVisibility };
       localStorage.setItem('user', JSON.stringify(updatedUser));
       localStorage.setItem('bio', bio); localStorage.setItem('phone', phone);
+      setPendingAvatar(null);
       setMsg('Profile updated successfully'); setEditing(false);
     } catch (err) { setError(err.message); }
     finally { setSaving(false); }
@@ -98,7 +107,8 @@ const [crop, setCrop] = useState({ unit: '%', width: 80, height: 80, x: 10, y: 1
 
   const handleCancel = () => {
     setName(storedUser.name || ''); setBio(localStorage.getItem('bio') || ''); setPhone(localStorage.getItem('phone') || '');
-    setPhotoVisibility(storedUser.photoVisibility || 'everyone'); setEditing(false); setError(''); setMsg('');
+    setAvatar(storedUser.avatar || ''); setPhotoVisibility(storedUser.photoVisibility || 'everyone');
+    setPendingAvatar(null); setEditing(false); setError(''); setMsg('');
   };
 
   const visibilityOptions = [
@@ -115,33 +125,35 @@ const [crop, setCrop] = useState({ unit: '%', width: 80, height: 80, x: 10, y: 1
 
       {cropMode && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 max-w-lg w-full">
+          <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 w-full max-w-md">
             <h3 className="text-lg font-bold text-white mb-4">Crop Profile Photo</h3>
             <div className="flex justify-center">
-  <div className="w-[300px] h-[300px] relative">
-    <ReactCrop 
-      crop={crop} 
-      onChange={c => setCrop(c)} 
-      onComplete={c => setCompletedCrop(c)} 
-      circularCrop 
-      aspect={1}
-      className="w-full h-full"
-    >
-      <img 
-        src={imgSrc} 
-        onLoad={(e) => onImageLoad(e.target)} 
-        alt="Crop" 
-        className="max-w-full max-h-full object-contain"
-        style={{ minWidth: '300px', minHeight: '300px' }}
-      />
-    </ReactCrop>
-  </div>
-</div>
+              <div className="w-[280px] h-[280px] relative rounded-full overflow-hidden">
+                <ReactCrop
+                  crop={crop}
+                  onChange={c => setCrop(c)}
+                  onComplete={c => setCompletedCrop(c)}
+                  circularCrop
+                  aspect={1}
+                  locked
+                  className="w-full h-full"
+                >
+                  <img
+                    src={imgSrc}
+                    onLoad={(e) => onImageLoad(e.target)}
+                    alt="Crop"
+                    className="w-full h-full object-cover"
+                  />
+                </ReactCrop>
+              </div>
+            </div>
             <div className="flex gap-3 mt-4">
-              <button onClick={handleUploadCropped} disabled={uploading} className="flex-1 bg-blue-600 hover:bg-blue-700 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer flex items-center justify-center gap-2">
-                <Crop size={16} /> {uploading ? 'Uploading...' : 'Save Photo'}
+              <button onClick={handleUploadCropped} disabled={uploading}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer flex items-center justify-center gap-2">
+                <Crop size={16} /> {uploading ? 'Uploading...' : 'Add Profile Pic'}
               </button>
-              <button onClick={() => { setCropMode(false); setImgSrc(''); }} className="flex-1 bg-gray-700 hover:bg-gray-600 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer">Cancel</button>
+              <button onClick={() => { setCropMode(false); setImgSrc(''); }}
+                className="flex-1 bg-gray-700 hover:bg-gray-600 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer">Cancel</button>
             </div>
           </div>
         </div>
@@ -156,11 +168,15 @@ const [crop, setCrop] = useState({ unit: '%', width: 80, height: 80, x: 10, y: 1
               <User size={40} className="text-white" />
             </div>
           )}
-          <button onClick={() => fileRef.current?.click()} disabled={uploading}
-            className="absolute bottom-0 right-0 bg-gray-700 hover:bg-gray-600 p-1.5 rounded-full transition-colors cursor-pointer">
-            <Camera size={14} className="text-white" />
-          </button>
-          <input type="file" ref={fileRef} onChange={onSelectFile} accept="image/jpeg,image/png,image/webp" className="hidden" />
+          {editing && (
+            <>
+              <button onClick={() => fileRef.current?.click()} disabled={uploading}
+                className="absolute bottom-0 right-0 bg-gray-700 hover:bg-gray-600 p-1.5 rounded-full transition-colors cursor-pointer">
+                <Camera size={14} className="text-white" />
+              </button>
+              <input type="file" ref={fileRef} onChange={onSelectFile} accept="image/jpeg,image/png,image/webp" className="hidden" />
+            </>
+          )}
         </div>
         {uploading && <p className="text-xs text-gray-400 mt-2">Uploading...</p>}
         <h2 className="text-xl font-bold text-white mt-3">{storedUser.name}</h2>
@@ -208,7 +224,7 @@ const [crop, setCrop] = useState({ unit: '%', width: 80, height: 80, x: 10, y: 1
           </div>
           <div className="flex gap-3">
             <button type="submit" disabled={saving} className="bg-blue-600 hover:bg-blue-700 px-6 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2">
-              <Check size={16} /> {saving ? 'Saving...' : 'Save Changes'}
+              <Check size={16} /> {saving ? 'Saving...' : 'Save Profile'}
             </button>
             <button type="button" onClick={handleCancel} className="bg-gray-700 hover:bg-gray-600 px-6 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer flex items-center gap-2">
               <X size={16} /> Cancel
