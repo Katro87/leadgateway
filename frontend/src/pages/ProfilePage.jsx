@@ -81,8 +81,7 @@ function ProfilePage() {
       <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 text-center">
         <div className="relative inline-block">
           {avatar ? (
-            <img src={avatar} alt="Avatar" className="w-24 h-24 rounded-full object-cover mx-auto border-2 border-gray-600" />
-          ) : (
+              <img src={avatar} alt="Avatar" className="w-24 h-24 rounded-full object-contain mx-auto border-2 border-gray-600 bg-gray-700" />          ) : (
             <div className="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center mx-auto">
               <User size={40} className="text-white" />
             </div>
