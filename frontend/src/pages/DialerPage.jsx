@@ -25,11 +25,18 @@ function DialerPage() {
   const menuTimeout = useRef(null)
   const user = JSON.parse(localStorage.getItem('user') || '{}')
 
-  useEffect(() => {
-    const onHashChange = () => setActiveLeftTab(getTabFromHash());
-    window.addEventListener('hashchange', onHashChange);
-    return () => window.removeEventListener('hashchange', onHashChange);
-  }, []);
+ useEffect(() => {
+  const savedTab = sessionStorage.getItem('dialerTab');
+  if (savedTab === 'messages' || savedTab === 'calls') {
+    setActiveLeftTab(savedTab);
+  }
+  const onHashChange = () => {
+    const tab = getTabFromHash();
+    setActiveLeftTab(tab);
+  };
+  window.addEventListener('hashchange', onHashChange);
+  return () => window.removeEventListener('hashchange', onHashChange);
+}, []);
 
   const handleMenuEnter = () => {
     if (menuTimeout.current) clearTimeout(menuTimeout.current);
