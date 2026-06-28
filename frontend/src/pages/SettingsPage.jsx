@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Key, Bell, Sliders, CreditCard, Check, X, AlertCircle, Eye, EyeOff } from 'lucide-react'
+import { Key, Bell, Sliders, CreditCard, Check, X, AlertCircle, Eye, EyeOff, Globe, Clock, Shield } from 'lucide-react'
 
 function Toast({ message, type, onClose }) {
   return (
@@ -33,6 +33,19 @@ function PasswordInput({ label, value, onChange, placeholder, error }) {
   )
 }
 
+const languages = [
+  { code: 'en', name: 'English' },
+  { code: 'es', name: 'Spanish' },
+  { code: 'fr', name: 'French' },
+  { code: 'de', name: 'German' },
+  { code: 'pt', name: 'Portuguese' },
+]
+
+const timezones = [
+  'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
+  'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Asia/Dubai', 'Asia/Kolkata', 'Asia/Tokyo',
+]
+
 function SettingsPage() {
   const [activeTab, setActiveTab] = useState('password')
   const [newPassword, setNewPassword] = useState('')
@@ -41,6 +54,10 @@ function SettingsPage() {
   const [errors, setErrors] = useState({})
   const [notifications, setNotifications] = useState({ email: true, calls: true, messages: true, marketing: false })
   const [preferences, setPreferences] = useState({ blockUnknown: false, hideCallerId: false, defaultVoicemail: true })
+  const [language, setLanguage] = useState(localStorage.getItem('language') || 'en')
+  const [timezone, setTimezone] = useState(localStorage.getItem('timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone)
+  const [twoFactor, setTwoFactor] = useState(false)
+  const [sessionTimeout, setSessionTimeout] = useState(localStorage.getItem('sessionTimeout') || '30')
   const [hasChanges, setHasChanges] = useState(false)
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState(null)
@@ -54,18 +71,10 @@ function SettingsPage() {
 
   const validatePassword = () => {
     const newErrors = {}
-    if (!currentPassword && newPassword) {
-      newErrors.currentPassword = 'Current password is required'
-    }
-    if (newPassword && newPassword.length < 6) {
-      newErrors.newPassword = 'Password must be at least 6 characters'
-    }
-    if (newPassword && newPassword === currentPassword) {
-      newErrors.newPassword = 'New password must be different from current'
-    }
-    if (newPassword && newPassword !== confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match'
-    }
+    if (!currentPassword && newPassword) newErrors.currentPassword = 'Current password is required'
+    if (newPassword && newPassword.length < 6) newErrors.newPassword = 'Password must be at least 6 characters'
+    if (newPassword && newPassword === currentPassword) newErrors.newPassword = 'New password must be different from current'
+    if (newPassword && newPassword !== confirmPassword) newErrors.confirmPassword = 'Passwords do not match'
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -77,19 +86,18 @@ function SettingsPage() {
       const token = localStorage.getItem('token')
       if (newPassword) {
         const res = await fetch('https://api.leadgateway.tech/api/users/profile', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
           body: JSON.stringify({ password: newPassword, currentPassword }),
         })
         const data = await res.json()
         if (!res.ok) throw new Error(data.message)
       }
-      showToast('Password changed successfully', 'success')
+      localStorage.setItem('language', language)
+      localStorage.setItem('timezone', timezone)
+      localStorage.setItem('sessionTimeout', sessionTimeout)
+      showToast('All settings saved', 'success')
       setHasChanges(false)
-      setNewPassword('')
-      setCurrentPassword('')
-      setConfirmPassword('')
-      setErrors({})
+      setNewPassword(''); setCurrentPassword(''); setConfirmPassword(''); setErrors({})
     } catch (err) {
       showToast(err.message, 'error')
     } finally {
@@ -98,12 +106,11 @@ function SettingsPage() {
   }
 
   const handleCancel = () => {
-    setNewPassword('')
-    setCurrentPassword('')
-    setConfirmPassword('')
-    setErrors({})
+    setNewPassword(''); setCurrentPassword(''); setConfirmPassword(''); setErrors({})
     setNotifications({ email: true, calls: true, messages: true, marketing: false })
     setPreferences({ blockUnknown: false, hideCallerId: false, defaultVoicemail: true })
+    setLanguage(localStorage.getItem('language') || 'en')
+    setTimezone(localStorage.getItem('timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone)
     setHasChanges(false)
   }
 
@@ -111,30 +118,28 @@ function SettingsPage() {
     { id: 'password', name: 'Password', icon: Key },
     { id: 'notifications', name: 'Notifications', icon: Bell },
     { id: 'preferences', name: 'Preferences', icon: Sliders },
+    { id: 'language', name: 'Language', icon: Globe },
+    { id: 'timezone', name: 'Timezone', icon: Clock },
+    { id: 'security', name: 'Security', icon: Shield },
     { id: 'billing', name: 'Billing', icon: CreditCard },
   ]
 
   return (
     <div className="space-y-6 max-w-3xl">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-
       <div>
         <h2 className="text-2xl font-bold text-white">Settings</h2>
         <p className="text-gray-400 text-sm mt-1">Manage your preferences</p>
       </div>
 
-      <div className="flex gap-1 border-b border-gray-700">
+      <div className="flex gap-1 border-b border-gray-700 flex-wrap">
         {tabs.map((tab) => {
           const Icon = tab.icon
           return (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors cursor-pointer border-b-2 -mb-px ${
-                activeTab === tab.id
-                  ? 'border-blue-500 text-white'
-                  : 'border-transparent text-gray-400 hover:text-white'
-              }`}>
-              <Icon size={16} />{tab.name}
-            </button>
+                activeTab === tab.id ? 'border-blue-500 text-white' : 'border-transparent text-gray-400 hover:text-white'
+              }`}><Icon size={16} />{tab.name}</button>
           )
         })}
       </div>
@@ -179,6 +184,49 @@ function SettingsPage() {
               </label>
             </div>
           ))}
+        </div>
+      )}
+
+      {activeTab === 'language' && (
+        <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 space-y-4">
+          <h3 className="text-lg font-semibold text-white">Language</h3>
+          <select value={language} onChange={(e) => { setLanguage(e.target.value); markChanged() }}
+            className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
+            {languages.map(l => <option key={l.code} value={l.code}>{l.name}</option>)}
+          </select>
+        </div>
+      )}
+
+      {activeTab === 'timezone' && (
+        <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 space-y-4">
+          <h3 className="text-lg font-semibold text-white">Timezone</h3>
+          <select value={timezone} onChange={(e) => { setTimezone(e.target.value); markChanged() }}
+            className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
+            {timezones.map(tz => <option key={tz} value={tz}>{tz}</option>)}
+          </select>
+        </div>
+      )}
+
+      {activeTab === 'security' && (
+        <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 space-y-5">
+          <h3 className="text-lg font-semibold text-white">Security</h3>
+          <div className="flex items-center justify-between py-2">
+            <div>
+              <p className="text-sm text-gray-300">Two-factor authentication</p>
+              <p className="text-xs text-gray-500">Add an extra layer of security</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" checked={twoFactor} onChange={(e) => { setTwoFactor(e.target.checked); markChanged() }} className="sr-only peer" />
+              <div className="w-9 h-5 bg-gray-600 peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Session timeout (minutes)</label>
+            <select value={sessionTimeout} onChange={(e) => { setSessionTimeout(e.target.value); markChanged() }}
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
+              {['15', '30', '60', '120'].map(t => <option key={t} value={t}>{t} minutes</option>)}
+            </select>
+          </div>
         </div>
       )}
 
