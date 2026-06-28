@@ -1,0 +1,1 @@
+import{t as e}from"./api-C-Nol7AY.js";var t=()=>e(`/contacts`),n=t=>e(`/contacts`,{method:`POST`,body:JSON.stringify(t)}),r=(t,n)=>e(`/contacts/${t}`,{method:`PUT`,body:JSON.stringify(n)}),i=t=>e(`/contacts/${t}`,{method:`DELETE`}),a=t=>e(`/contacts/${t}/favorite`,{method:`PUT`});export{r as a,a as i,i as n,t as r,n as t};
