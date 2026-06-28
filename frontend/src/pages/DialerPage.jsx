@@ -76,6 +76,7 @@ function DialerPage() {
       else if (savedTab === 'voicemail') setActiveLeftTab('voicemail');
       else if (savedTab === 'calls') setActiveLeftTab('calls');
       else setActiveLeftTab(getTabFromHash());
+      setSelectedContact(null);
     };
     checkTab();
     window.addEventListener('hashchange', checkTab);
