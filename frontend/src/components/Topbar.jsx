@@ -41,7 +41,7 @@ function Topbar() {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    setTimeout(() => navigate('/login'), 300);
+    setTimeout(() => navigate('/'), 300);
   };
 
   const handleSearch = (e) => {
