@@ -10,7 +10,7 @@ function Topbar() {
   const [notifOpen, setNotifOpen] = useState(false);
   const dropdownRef = useRef(null);
   const notifRef = useRef(null);
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -27,6 +27,15 @@ function Topbar() {
   useEffect(() => {
     loadNotifications();
     const interval = setInterval(loadNotifications, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const checkUser = () => {
+      const stored = JSON.parse(localStorage.getItem('user') || '{}');
+      if (stored.avatar !== user.avatar) setUser(stored);
+    };
+    const interval = setInterval(checkUser, 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -88,7 +97,6 @@ function Topbar() {
       </form>
 
       <div className="flex items-center gap-3">
-        {/* Notifications */}
         <div className="relative" ref={notifRef}>
           <button onClick={() => setNotifOpen(!notifOpen)}
             className="text-gray-400 hover:text-white transition-colors relative cursor-pointer" title="Notifications">
@@ -97,7 +105,6 @@ function Topbar() {
               <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">{unreadCount}</span>
             )}
           </button>
-
           {notifOpen && (
             <div className="absolute right-0 mt-2 w-80 bg-gray-800 border border-gray-700 rounded-xl shadow-lg z-50">
               <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
@@ -126,12 +133,15 @@ function Topbar() {
           )}
         </div>
 
-        {/* Profile Dropdown */}
         <div className="relative" ref={dropdownRef}>
           <button onClick={() => setDropdownOpen(!dropdownOpen)}
             className="flex items-center gap-2 text-sm text-gray-300 hover:text-white transition-colors cursor-pointer" title="Account menu">
-            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-              <User size={16} className="text-white" />
+            <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center bg-blue-600">
+              {user.avatar ? (
+                <img src={user.avatar} alt="" className="w-8 h-8 object-cover" />
+              ) : (
+                <User size={16} className="text-white" />
+              )}
             </div>
             <ChevronDown size={14} className={`transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
           </button>
