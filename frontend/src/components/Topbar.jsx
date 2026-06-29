@@ -1,304 +1,133 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Mail, Phone, FileText, Pencil, Check, X, AlertCircle, Camera, Globe, Users, EyeOff, Maximize2, Crop } from 'lucide-react';
-import ReactCrop, { centerCrop, makeAspectCrop } from 'react-image-crop';
-import 'react-image-crop/dist/ReactCrop.css';
+import { Search, Bell, User, Sun, Moon, LogOut, ChevronDown, X, Phone, MessageSquare } from 'lucide-react';
+import { getNotifications, markAllRead } from '../api/notifications';
+import { getContacts } from '../api/contacts';
 
-function centerAspectCrop(mediaWidth, mediaHeight, aspect) {
-  // Must use 'px', not '%'. Percent-based aspect-locked crops drift into
-  // ovals during drag due to float rounding. Pixel units are literal
-  // identical numbers, so the square never drifts.
-  const side = Math.min(mediaWidth, mediaHeight) * 0.8;
-  return centerCrop(
-    makeAspectCrop({ unit: 'px', width: side }, aspect, mediaWidth, mediaHeight),
-    mediaWidth,
-    mediaHeight,
-  );
-}
-
-function ProfilePage() {
+function Topbar() {
   const navigate = useNavigate();
-  const [storedUser, setStoredUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
-  const [name, setName] = useState(storedUser.name || '');
-  const [bio, setBio] = useState(localStorage.getItem('bio') || '');
-  const [phone, setPhone] = useState(localStorage.getItem('phone') || '');
-  const [avatar, setAvatar] = useState(() => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    return user.avatar || '';
-  });
-  const [photoVisibility, setPhotoVisibility] = useState(storedUser.photoVisibility || 'everyone');
-  const [editing, setEditing] = useState(false);
-  const [msg, setMsg] = useState('');
-  const [error, setError] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const dropdownRef = useRef(null);
+  const notifRef = useRef(null);
+  const searchRef = useRef(null);
+  const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [contacts, setContacts] = useState([]);
 
-  // --- Crop modal state ---
-  const [cropMode, setCropMode] = useState(false);
-  const [imgSrc, setImgSrc] = useState('');
-  const [crop, setCrop] = useState(null);
-  const [completedCrop, setCompletedCrop] = useState(null);
-  const imgRef = useRef(null);
-
-  const fileRef = useRef(null);
-
-  const updateLocalUser = (updates) => {
-    const current = JSON.parse(localStorage.getItem('user') || '{}');
-    const updated = { ...current, ...updates };
-    localStorage.setItem('user', JSON.stringify(updated));
-    setStoredUser(updated);
-    if (updates.avatar) setAvatar(updates.avatar);
-  };
-
-  // Step 1: user picks a file -> open crop modal, do NOT upload yet
-  const onSelectFile = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setImgSrc(reader.result);
-      setCrop(null);
-      setCompletedCrop(null);
-      setCropMode(true);
-    };
-    reader.readAsDataURL(file);
-    e.target.value = ''; // allow re-selecting the same file again later
-  };
-
-  // Step 2: image element inside the crop modal has loaded -> set initial square crop
-  const onImageLoad = useCallback((e) => {
-    const img = e.target;
-    imgRef.current = img;
-    const { width, height } = img; // rendered size, not natural size
-    const initialCrop = centerAspectCrop(width, height, 1);
-    setCrop(initialCrop);
-    setCompletedCrop(initialCrop);
+  useEffect(() => {
+    getContacts().then(setContacts).catch(() => {});
   }, []);
 
-  // Step 3: build a 400x400 cropped canvas from the current selection
-  const getCroppedCanvas = () => {
-    if (!completedCrop || !imgRef.current) return null;
-    const img = imgRef.current;
-    const scaleX = img.naturalWidth / img.width;
-    const scaleY = img.naturalHeight / img.height;
-    const canvas = document.createElement('canvas');
-    canvas.width = 400;
-    canvas.height = 400;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(
-      img,
-      completedCrop.x * scaleX,
-      completedCrop.y * scaleY,
-      completedCrop.width * scaleX,
-      completedCrop.height * scaleY,
-      0, 0, 400, 400
-    );
-    return canvas;
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setDropdownOpen(false);
+      if (notifRef.current && !notifRef.current.contains(e.target)) setNotifOpen(false);
+      if (searchRef.current && !searchRef.current.contains(e.target)) setSearchOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => { loadNotifications(); const interval = setInterval(loadNotifications, 30000); return () => clearInterval(interval); }, []);
+  useEffect(() => { const checkUser = () => { const stored = JSON.parse(localStorage.getItem('user') || '{}'); if (stored.avatar !== user.avatar) setUser(stored); }; const interval = setInterval(checkUser, 1000); return () => clearInterval(interval); }, []);
+
+  const loadNotifications = async () => {
+    try { const data = await getNotifications(); setNotifications(data.notifications || []); setUnreadCount(data.unreadCount || 0); } catch (err) {}
   };
 
-  // Step 4: "Add Profile Pic" inside the crop modal -> upload the cropped square
-  const handleUploadCropped = async () => {
-    const canvas = getCroppedCanvas();
-    if (!canvas) return;
-    setUploading(true);
-    canvas.toBlob(async (blob) => {
-      try {
-        const token = localStorage.getItem('token');
-        const formData = new FormData();
-        formData.append('avatar', blob, 'avatar.jpg');
-        const res = await fetch('https://api.leadgateway.tech/api/upload/avatar', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
-          body: formData,
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message);
-        updateLocalUser({ avatar: data.avatar }); // backend already returns a full URL
-        setCropMode(false);
-        setImgSrc('');
-        setCrop(null);
-        setCompletedCrop(null);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setUploading(false);
-      }
-    }, 'image/jpeg', 0.92);
-  };
-
-  const handleCancelCrop = () => {
-    setCropMode(false);
-    setImgSrc('');
-    setCrop(null);
-    setCompletedCrop(null);
-  };
-
-  const handleSave = async (e) => {
-    e.preventDefault();
-    setMsg(''); setError('');
-    if (!name || name.trim().length < 2) { setError('Name must be at least 2 characters'); return; }
-    setSaving(true);
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('https://api.leadgateway.tech/api/users/profile', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ name: name.trim(), phone, bio }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
-      await fetch('https://api.leadgateway.tech/api/upload/privacy', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ photoVisibility }),
-      });
-      updateLocalUser({ name: data.name, photoVisibility });
-      localStorage.setItem('bio', bio);
-      localStorage.setItem('phone', phone);
-      setMsg('Profile updated successfully');
-      setEditing(false);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setSaving(false);
+  const handleSearchChange = (e) => {
+    const val = e.target.value;
+    setSearch(val);
+    if (val.trim().length > 0) {
+      const filtered = contacts.filter(c => c.name?.toLowerCase().includes(val.toLowerCase()) || c.phone?.includes(val));
+      setSearchResults(filtered.slice(0, 5));
+      setSearchOpen(true);
+    } else {
+      setSearchOpen(false);
     }
   };
 
-  const handleCancel = () => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    setName(user.name || '');
-    setBio(localStorage.getItem('bio') || '');
-    setPhone(localStorage.getItem('phone') || '');
-    setAvatar(user.avatar || '');
-    setPhotoVisibility(user.photoVisibility || 'everyone');
-    setEditing(false);
-    setError('');
-    setMsg('');
+  const handleMessageContact = (contact) => {
+    sessionStorage.setItem('dialerTab', 'messages');
+    setSearchOpen(false); setSearch('');
+    navigate(`/dialer?tab=messages`);
+    setTimeout(() => {
+      const event = new CustomEvent('openMessageContact', { detail: contact });
+      window.dispatchEvent(event);
+    }, 500);
   };
 
-  const visibilityOptions = [
-    { value: 'everyone', label: 'Everyone', icon: Globe, desc: 'Anyone can see your photo' },
-    { value: 'contacts', label: 'Saved Contacts', icon: Users, desc: 'Only your contacts' },
-    { value: 'nobody', label: 'Nobody', icon: EyeOff, desc: 'Hidden from everyone' },
-  ];
+  const handleCallContact = (contact) => {
+    sessionStorage.setItem('dialerTab', 'calls');
+    setSearchOpen(false); setSearch('');
+    navigate(`/dialer?tab=calls`);
+    setTimeout(() => {
+      const event = new CustomEvent('dialNumber', { detail: contact.phone });
+      window.dispatchEvent(event);
+    }, 500);
+  };
+
+  const handleLogout = () => { localStorage.removeItem('token'); localStorage.removeItem('user'); setTimeout(() => navigate('/'), 300); };
+  const toggleTheme = () => { const newTheme = theme === 'dark' ? 'light' : 'dark'; if (newTheme === 'light') document.documentElement.classList.add('light'); else document.documentElement.classList.remove('light'); setTheme(newTheme); localStorage.setItem('theme', newTheme); };
+  const handleMarkAllRead = async () => { try { await markAllRead(); setUnreadCount(0); setNotifications(prev => prev.map(n => ({ ...n, read: true }))); } catch (err) {} };
+
+  function formatTimeAgo(timestamp) { const now = new Date(); const date = new Date(timestamp); const diffMins = Math.floor((now - date) / 60000); if (diffMins < 1) return 'Just now'; if (diffMins < 60) return `${diffMins}m ago`; const diffHours = Math.floor(diffMins / 60); if (diffHours < 24) return `${diffHours}h ago`; return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <button onClick={() => navigate('/dashboard')} className="text-gray-400 hover:text-white text-sm flex items-center gap-1 transition-colors">
-        <ArrowLeft size={16} /> Back to Dashboard
-      </button>
-
-      {/* Crop Modal */}
-      {cropMode && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 w-full max-w-lg">
-            <h3 className="text-lg font-bold text-white mb-4">Crop Profile Photo</h3>
-            <div className="flex justify-center">
-              {/* Gated on imgSrc, NOT on crop — crop only exists after onImageLoad fires,
-                  and onImageLoad only fires if this img actually renders. Gating on crop
-                  here would mean the img never mounts, onLoad never fires, crop stays
-                  null forever, and the modal shows nothing. */}
-              {imgSrc && (
-                <ReactCrop
-                  crop={crop}
-                  onChange={(c) => setCrop(c)}
-                  onComplete={(c) => setCompletedCrop(c)}
-                  circularCrop
-                  aspect={1}
-                  locked
-                  ruleOfThirds
-                >
-                  <img
-                    src={imgSrc}
-                    onLoad={onImageLoad}
-                    alt="Crop preview"
-                    style={{ maxWidth: '100%', maxHeight: '70vh', display: 'block' }}
-                  />
-                </ReactCrop>
-              )}
-            </div>
-            <p className="text-xs text-gray-500 text-center mt-3">Drag the image to position it. The circle stays fixed.</p>
-            <div className="flex gap-3 mt-4">
-              <button
-                onClick={handleUploadCropped}
-                disabled={uploading || !completedCrop}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                <Crop size={16} /> {uploading ? 'Uploading...' : 'Add Profile Pic'}
-              </button>
-              <button
-                onClick={handleCancelCrop}
-                className="flex-1 bg-gray-700 hover:bg-gray-600 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
+    <header className="h-16 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-6">
+      <div className="flex-1 max-w-md relative" ref={searchRef}>
+        <div className="relative">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input type="text" value={search} onChange={handleSearchChange} onFocus={() => search.trim() && setSearchOpen(true)}
+            placeholder="Search contacts..."
+            className="w-full bg-gray-700 border border-gray-600 rounded-lg pl-10 pr-4 py-2 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 transition-colors" />
         </div>
-      )}
-
-      {/* Lightbox */}
-      {lightboxOpen && avatar && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 cursor-pointer" onClick={() => setLightboxOpen(false)}>
-          <button onClick={() => setLightboxOpen(false)} className="absolute top-4 right-4 text-white hover:text-gray-300 z-10"><X size={28} /></button>
-          <img src={avatar} alt="Profile" className="max-w-[90vw] max-h-[90vh] rounded-2xl object-cover object-center" onClick={(e) => e.stopPropagation()} />
-        </div>
-      )}
-
-      <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 text-center">
-        <div className="relative inline-block group">
-          {avatar ? (
-            <>
-              <img src={avatar} alt="Avatar" className="w-24 h-24 rounded-full object-cover object-center mx-auto border-2 border-gray-600 cursor-pointer" onClick={() => setLightboxOpen(true)} />
-              <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center cursor-pointer" onClick={() => setLightboxOpen(true)}>
-                <Maximize2 size={20} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+        {searchOpen && searchResults.length > 0 && (
+          <div className="absolute top-full mt-1 left-0 right-0 bg-gray-800 border border-gray-700 rounded-xl shadow-lg z-50 py-1">
+            {searchResults.map((c) => (
+              <div key={c._id} className="flex items-center justify-between px-4 py-2.5 hover:bg-gray-700 transition-colors">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">{c.name?.charAt(0)}</div>
+                  <div className="min-w-0">
+                    <p className="text-sm text-white truncate">{c.name}</p>
+                    <p className="text-xs text-gray-400 truncate">{c.phone}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                  <button onClick={() => handleMessageContact(c)} className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-600 rounded-lg transition-colors cursor-pointer" title="Message"><MessageSquare size={16} /></button>
+                  <button onClick={() => handleCallContact(c)} className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-600 rounded-lg transition-colors cursor-pointer" title="Call"><Phone size={16} /></button>
+                </div>
               </div>
-            </>
-          ) : (
-            <div className="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center mx-auto">
-              <User size={40} className="text-white" />
-            </div>
-          )}
-          {editing && (
-            <>
-              <button onClick={() => fileRef.current?.click()} disabled={uploading}
-                className="absolute bottom-0 right-0 bg-gray-700 hover:bg-gray-600 p-1.5 rounded-full transition-colors cursor-pointer">
-                <Camera size={14} className="text-white" />
-              </button>
-              <input type="file" ref={fileRef} onChange={onSelectFile} accept="image/jpeg,image/png,image/webp" className="hidden" />
-            </>
-          )}
-        </div>
-        {uploading && !cropMode && <p className="text-xs text-gray-400 mt-2">Uploading...</p>}
-        <h2 className="text-xl font-bold text-white mt-3">{storedUser.name}</h2>
-        <p className="text-gray-400 text-sm mt-1">{bio || 'No bio yet'}</p>
-        {phone && <p className="text-gray-500 text-xs mt-1 flex items-center justify-center gap-1"><Phone size={12} /> {phone}</p>}
-        {!editing && (
-          <button onClick={() => setEditing(true)} className="mt-4 bg-gray-700 hover:bg-gray-600 px-5 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer flex items-center gap-2 mx-auto">
-            <Pencil size={14} /> Edit Profile
-          </button>
+            ))}
+          </div>
         )}
       </div>
 
-      {editing && (
-        <form onSubmit={handleSave} className="bg-gray-800 rounded-xl border border-gray-700 p-6 space-y-5">
-          <h3 className="text-lg font-semibold text-white flex items-center gap-2"><Pencil size={18} /> Edit Profile</h3>
-          {error && <div className="bg-red-900/30 border border-red-700/50 text-red-400 px-4 py-3 rounded-lg text-sm flex items-center gap-2"><AlertCircle size={16} /> {error}</div>}
-          {msg && <div className="bg-green-900/30 border border-green-700/50 text-green-400 px-4 py-3 rounded-lg text-sm flex items-center gap-2"><Check size={16} /> {msg}</div>}
-          <div><label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2"><User size={14} /> Full Name</label><input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500" /></div>
-          <div><label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2"><Mail size={14} /> Email</label><input type="email" value={storedUser.email} disabled className="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-gray-500 cursor-not-allowed" /></div>
-          <div><label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2"><Phone size={14} /> Phone</label><input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1 (555) 123-4567" className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500" /></div>
-          <div><label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2"><FileText size={14} /> Bio</label><textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell us about yourself..." className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 resize-none" rows="3" /></div>
-          <div><label className="block text-sm font-medium text-gray-300 mb-3">Photo Visibility</label><div className="space-y-2">{visibilityOptions.map((opt) => { const Icon = opt.icon; return (<button key={opt.value} type="button" onClick={() => setPhotoVisibility(opt.value)} className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-pointer text-left ${photoVisibility === opt.value ? 'border-blue-500 bg-blue-500/10' : 'border-gray-600 hover:border-gray-500'}`}><Icon size={18} className={photoVisibility === opt.value ? 'text-blue-400' : 'text-gray-400'} /><div><p className="text-sm font-medium text-white">{opt.label}</p><p className="text-xs text-gray-400">{opt.desc}</p></div></button>)})}</div></div>
-          <div className="flex gap-3">
-            <button type="submit" disabled={saving} className="bg-blue-600 hover:bg-blue-700 px-6 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"><Check size={16} /> {saving ? 'Saving...' : 'Save Profile'}</button>
-            <button type="button" onClick={handleCancel} className="bg-gray-700 hover:bg-gray-600 px-6 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer flex items-center gap-2"><X size={16} /> Cancel</button>
-          </div>
-        </form>
-      )}
-    </div>
+      <div className="flex items-center gap-3">
+        <div className="relative" ref={notifRef}>
+          <button onClick={() => setNotifOpen(!notifOpen)} className="text-gray-400 hover:text-white transition-colors relative cursor-pointer" title="Notifications"><Bell size={20} />{unreadCount > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">{unreadCount}</span>}</button>
+          {notifOpen && (
+            <div className="absolute right-0 mt-2 w-80 bg-gray-800 border border-gray-700 rounded-xl shadow-lg z-50">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700"><h3 className="text-sm font-semibold text-white">Notifications</h3>{unreadCount > 0 && <button onClick={handleMarkAllRead} className="text-xs text-blue-400 hover:text-blue-300 cursor-pointer">Mark all read</button>}</div>
+              <div className="max-h-80 overflow-y-auto">
+                {notifications.length === 0 ? <p className="text-center py-6 text-gray-500 text-sm">No notifications</p> : notifications.map((n) => (<div key={n._id} className={`px-4 py-3 border-b border-gray-700/50 hover:bg-gray-750 transition-colors ${!n.read ? 'bg-gray-700/30' : ''}`}><div className="flex items-start justify-between"><p className="text-sm text-white font-medium">{n.title}</p>{!n.read && <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-1.5"></span>}</div><p className="text-xs text-gray-400 mt-0.5">{n.message}</p><p className="text-xs text-gray-500 mt-1">{formatTimeAgo(n.createdAt)}</p></div>))}
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="relative" ref={dropdownRef}>
+          <button onClick={() => setDropdownOpen(!dropdownOpen)} className="flex items-center gap-2 text-sm text-gray-300 hover:text-white transition-colors cursor-pointer"><div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center bg-blue-600">{user.avatar ? <img src={user.avatar} alt="" className="w-8 h-8 object-cover" /> : <User size={16} className="text-white" />}</div><ChevronDown size={14} className={`transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} /></button>
+          {dropdownOpen && (<div className="absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-700 rounded-xl shadow-lg py-1 z-50"><button onClick={() => { navigate('/profile'); setDropdownOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors flex items-center gap-2"><User size={16} /> Profile</button><button onClick={() => { toggleTheme(); setDropdownOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors flex items-center gap-2">{theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />} {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</button><hr className="border-gray-700 my-1" /><button onClick={handleLogout} className="w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-gray-700 transition-colors flex items-center gap-2"><LogOut size={16} /> Logout</button></div>)}
+        </div>
+      </div>
+    </header>
   )
 }
 
-export default ProfilePage
+export default Topbar

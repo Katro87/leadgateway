@@ -1,6 +1,20 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Mail, Phone, FileText, Pencil, Check, X, AlertCircle, Camera, Globe, Users, EyeOff, Maximize2 } from 'lucide-react';
+import { ArrowLeft, User, Mail, Phone, FileText, Pencil, Check, X, AlertCircle, Camera, Globe, Users, EyeOff, Maximize2, Crop } from 'lucide-react';
+import ReactCrop, { centerCrop, makeAspectCrop } from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
+
+function centerAspectCrop(mediaWidth, mediaHeight, aspect) {
+  // Must use 'px', not '%'. Percent-based aspect-locked crops drift into
+  // ovals during drag due to float rounding. Pixel units are literal
+  // identical numbers, so the square never drifts.
+  const side = Math.min(mediaWidth, mediaHeight) * 0.8;
+  return centerCrop(
+    makeAspectCrop({ unit: 'px', width: side }, aspect, mediaWidth, mediaHeight),
+    mediaWidth,
+    mediaHeight,
+  );
+}
 
 function ProfilePage() {
   const navigate = useNavigate();
@@ -9,9 +23,9 @@ function ProfilePage() {
   const [bio, setBio] = useState(localStorage.getItem('bio') || '');
   const [phone, setPhone] = useState(localStorage.getItem('phone') || '');
   const [avatar, setAvatar] = useState(() => {
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  return user.avatar || '';
-});
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    return user.avatar || '';
+  });
   const [photoVisibility, setPhotoVisibility] = useState(storedUser.photoVisibility || 'everyone');
   const [editing, setEditing] = useState(false);
   const [msg, setMsg] = useState('');
@@ -19,13 +33,15 @@ function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
-  const fileRef = useRef(null);
 
-  useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    setAvatar(user.avatar || '');
-    setStoredUser(user);
-  }, []);
+  // --- Crop modal state ---
+  const [cropMode, setCropMode] = useState(false);
+  const [imgSrc, setImgSrc] = useState('');
+  const [crop, setCrop] = useState(null);
+  const [completedCrop, setCompletedCrop] = useState(null);
+  const imgRef = useRef(null);
+
+  const fileRef = useRef(null);
 
   const updateLocalUser = (updates) => {
     const current = JSON.parse(localStorage.getItem('user') || '{}');
@@ -35,22 +51,87 @@ function ProfilePage() {
     if (updates.avatar) setAvatar(updates.avatar);
   };
 
-  const onSelectFile = async (e) => {
+  // Step 1: user picks a file -> open crop modal, do NOT upload yet
+  const onSelectFile = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setImgSrc(reader.result);
+      setCrop(null);
+      setCompletedCrop(null);
+      setCropMode(true);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = ''; // allow re-selecting the same file again later
+  };
+
+  // Step 2: image element inside the crop modal has loaded -> set initial square crop
+  const onImageLoad = useCallback((e) => {
+    const img = e.target;
+    imgRef.current = img;
+    const { width, height } = img; // rendered size, not natural size
+    const initialCrop = centerAspectCrop(width, height, 1);
+    setCrop(initialCrop);
+    setCompletedCrop(initialCrop);
+  }, []);
+
+  // Step 3: build a 400x400 cropped canvas from the current selection
+  const getCroppedCanvas = () => {
+    if (!completedCrop || !imgRef.current) return null;
+    const img = imgRef.current;
+    const scaleX = img.naturalWidth / img.width;
+    const scaleY = img.naturalHeight / img.height;
+    const canvas = document.createElement('canvas');
+    canvas.width = 400;
+    canvas.height = 400;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(
+      img,
+      completedCrop.x * scaleX,
+      completedCrop.y * scaleY,
+      completedCrop.width * scaleX,
+      completedCrop.height * scaleY,
+      0, 0, 400, 400
+    );
+    return canvas;
+  };
+
+  // Step 4: "Add Profile Pic" inside the crop modal -> upload the cropped square
+  const handleUploadCropped = async () => {
+    const canvas = getCroppedCanvas();
+    if (!canvas) return;
     setUploading(true);
-    try {
-      const token = localStorage.getItem('token');
-      const formData = new FormData();
-      formData.append('avatar', file);
-      const res = await fetch('https://api.leadgateway.tech/api/upload/avatar', {
-        method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData,
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message);
-      updateLocalUser({ avatar: data.avatar });
-    } catch (err) { setError(err.message); }
-    finally { setUploading(false); }
+    canvas.toBlob(async (blob) => {
+      try {
+        const token = localStorage.getItem('token');
+        const formData = new FormData();
+        formData.append('avatar', blob, 'avatar.jpg');
+        const res = await fetch('https://api.leadgateway.tech/api/upload/avatar', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message);
+        updateLocalUser({ avatar: data.avatar }); // backend already returns a full URL
+        setCropMode(false);
+        setImgSrc('');
+        setCrop(null);
+        setCompletedCrop(null);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setUploading(false);
+      }
+    }, 'image/jpeg', 0.92);
+  };
+
+  const handleCancelCrop = () => {
+    setCropMode(false);
+    setImgSrc('');
+    setCrop(null);
+    setCompletedCrop(null);
   };
 
   const handleSave = async (e) => {
@@ -61,27 +142,39 @@ function ProfilePage() {
     try {
       const token = localStorage.getItem('token');
       const res = await fetch('https://api.leadgateway.tech/api/users/profile', {
-        method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ name: name.trim(), phone, bio }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
       await fetch('https://api.leadgateway.tech/api/upload/privacy', {
-        method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ photoVisibility }),
       });
       updateLocalUser({ name: data.name, photoVisibility });
-      localStorage.setItem('bio', bio); localStorage.setItem('phone', phone);
-      setMsg('Profile updated successfully'); setEditing(false);
-    } catch (err) { setError(err.message); }
-    finally { setSaving(false); }
+      localStorage.setItem('bio', bio);
+      localStorage.setItem('phone', phone);
+      setMsg('Profile updated successfully');
+      setEditing(false);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCancel = () => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
-    setName(user.name || ''); setBio(localStorage.getItem('bio') || ''); setPhone(localStorage.getItem('phone') || '');
-    setAvatar(user.avatar || ''); setPhotoVisibility(user.photoVisibility || 'everyone');
-    setEditing(false); setError(''); setMsg('');
+    setName(user.name || '');
+    setBio(localStorage.getItem('bio') || '');
+    setPhone(localStorage.getItem('phone') || '');
+    setAvatar(user.avatar || '');
+    setPhotoVisibility(user.photoVisibility || 'everyone');
+    setEditing(false);
+    setError('');
+    setMsg('');
   };
 
   const visibilityOptions = [
@@ -96,6 +189,56 @@ function ProfilePage() {
         <ArrowLeft size={16} /> Back to Dashboard
       </button>
 
+      {/* Crop Modal */}
+      {cropMode && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 w-full max-w-lg">
+            <h3 className="text-lg font-bold text-white mb-4">Crop Profile Photo</h3>
+            <div className="flex justify-center">
+              {/* Gated on imgSrc, NOT on crop — crop only exists after onImageLoad fires,
+                  and onImageLoad only fires if this img actually renders. Gating on crop
+                  here would mean the img never mounts, onLoad never fires, crop stays
+                  null forever, and the modal shows nothing. */}
+              {imgSrc && (
+                <ReactCrop
+                  crop={crop}
+                  onChange={(c) => setCrop(c)}
+                  onComplete={(c) => setCompletedCrop(c)}
+                  circularCrop
+                  aspect={1}
+                  locked
+                  ruleOfThirds
+                >
+                  <img
+                    src={imgSrc}
+                    onLoad={onImageLoad}
+                    alt="Crop preview"
+                    style={{ maxWidth: '100%', maxHeight: '70vh', display: 'block' }}
+                  />
+                </ReactCrop>
+              )}
+            </div>
+            <p className="text-xs text-gray-500 text-center mt-3">Drag the image to position it. The circle stays fixed.</p>
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={handleUploadCropped}
+                disabled={uploading || !completedCrop}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <Crop size={16} /> {uploading ? 'Uploading...' : 'Add Profile Pic'}
+              </button>
+              <button
+                onClick={handleCancelCrop}
+                className="flex-1 bg-gray-700 hover:bg-gray-600 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox */}
       {lightboxOpen && avatar && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 cursor-pointer" onClick={() => setLightboxOpen(false)}>
           <button onClick={() => setLightboxOpen(false)} className="absolute top-4 right-4 text-white hover:text-gray-300 z-10"><X size={28} /></button>
@@ -107,7 +250,7 @@ function ProfilePage() {
         <div className="relative inline-block group">
           {avatar ? (
             <>
-              <img src={avatar} alt="Avatar" className="w-24 h-24 rounded-full object-cover mx-auto border-2 border-gray-600 cursor-pointer" onClick={() => setLightboxOpen(true)} />
+              <img src={avatar} alt="Avatar" className="w-24 h-24 rounded-full object-cover object-center mx-auto border-2 border-gray-600 cursor-pointer" onClick={() => setLightboxOpen(true)} />
               <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center cursor-pointer" onClick={() => setLightboxOpen(true)}>
                 <Maximize2 size={20} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
@@ -127,7 +270,7 @@ function ProfilePage() {
             </>
           )}
         </div>
-        {uploading && <p className="text-xs text-gray-400 mt-2">Uploading...</p>}
+        {uploading && !cropMode && <p className="text-xs text-gray-400 mt-2">Uploading...</p>}
         <h2 className="text-xl font-bold text-white mt-3">{storedUser.name}</h2>
         <p className="text-gray-400 text-sm mt-1">{bio || 'No bio yet'}</p>
         {phone && <p className="text-gray-500 text-xs mt-1 flex items-center justify-center gap-1"><Phone size={12} /> {phone}</p>}
