@@ -45,8 +45,7 @@ function ProfilePage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
-      const avatarUrl = `https://api.leadgateway.tech${data.avatar}`;
-      updateLocalUser({ avatar: avatarUrl });
+      updateLocalUser({ avatar: data.avatar });
     } catch (err) { setError(err.message); }
     finally { setUploading(false); }
   };
