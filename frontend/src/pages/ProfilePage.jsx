@@ -8,7 +8,10 @@ function ProfilePage() {
   const [name, setName] = useState(storedUser.name || '');
   const [bio, setBio] = useState(localStorage.getItem('bio') || '');
   const [phone, setPhone] = useState(localStorage.getItem('phone') || '');
-  const [avatar, setAvatar] = useState(storedUser.avatar || '');
+  const [avatar, setAvatar] = useState(() => {
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  return user.avatar || '';
+});
   const [photoVisibility, setPhotoVisibility] = useState(storedUser.photoVisibility || 'everyone');
   const [editing, setEditing] = useState(false);
   const [msg, setMsg] = useState('');
@@ -96,7 +99,7 @@ function ProfilePage() {
       {lightboxOpen && avatar && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 cursor-pointer" onClick={() => setLightboxOpen(false)}>
           <button onClick={() => setLightboxOpen(false)} className="absolute top-4 right-4 text-white hover:text-gray-300 z-10"><X size={28} /></button>
-          <img src={avatar} alt="Profile" className="max-w-[90vw] max-h-[90vh] rounded-2xl object-contain" onClick={(e) => e.stopPropagation()} />
+          <img src={avatar} alt="Profile" className="max-w-[90vw] max-h-[90vh] rounded-2xl object-cover object-center" onClick={(e) => e.stopPropagation()} />
         </div>
       )}
 
