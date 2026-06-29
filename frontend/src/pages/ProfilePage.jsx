@@ -56,8 +56,8 @@ function ProfilePage() {
         method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ photoVisibility }),
       });
-      const updatedUser = { ...storedUser, name: data.name, avatar: data.avatar || avatar, photoVisibility };
-      localStorage.setItem('user', JSON.stringify(updatedUser));
+const finalAvatar = pendingAvatar || data.avatar || avatar;
+const updatedUser = { ...storedUser, name: data.name, avatar: finalAvatar, photoVisibility };      localStorage.setItem('user', JSON.stringify(updatedUser));
       localStorage.setItem('bio', bio); localStorage.setItem('phone', phone);
       setPendingAvatar(null);
       setMsg('Profile updated successfully'); setEditing(false);
