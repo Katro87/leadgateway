@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Phone, Users, MessageSquare, Clock, Plus, Send, Loader2, User } from 'lucide-react'
+import { Phone, Users, MessageSquare, Clock, Plus, Send, Loader2, User, Maximize2, X } from 'lucide-react'
 
 function DashboardPage() {
   const [stats, setStats] = useState({ totalCalls: 0, contacts: 0, messages: 0, talkTime: '0h 0m' })
-  const [userData, setUserData] = useState(JSON.parse(localStorage.getItem('user') || '{}'))
+  const [userData, setUserData] = useState(() => JSON.parse(localStorage.getItem('user') || '{}'))
   const [loading, setLoading] = useState(true)
   const [callFilter, setCallFilter] = useState('today')
   const [recentCalls, setRecentCalls] = useState([])
+  const [lightboxOpen, setLightboxOpen] = useState(false)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -58,10 +59,22 @@ function DashboardPage() {
 
   return (
     <div className="space-y-8">
+      {lightboxOpen && userData.avatar && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 cursor-pointer" onClick={() => setLightboxOpen(false)}>
+          <button onClick={() => setLightboxOpen(false)} className="absolute top-4 right-4 text-white hover:text-gray-300 z-10"><X size={28} /></button>
+          <img src={userData.avatar} alt="Profile" className="max-w-[90vw] max-h-[90vh] rounded-2xl object-contain" onClick={(e) => e.stopPropagation()} />
+        </div>
+      )}
+
       <div className="flex items-center gap-4">
-        <div className="w-14 h-14 rounded-full overflow-hidden bg-blue-600 flex items-center justify-center flex-shrink-0">
+        <div className="w-14 h-14 rounded-full overflow-hidden bg-blue-600 flex items-center justify-center flex-shrink-0 cursor-pointer group relative" onClick={() => userData.avatar && setLightboxOpen(true)}>
           {userData.avatar ? (
-            <img src={userData.avatar} alt="" className="w-14 h-14 object-cover" />
+            <>
+              <img src={userData.avatar} alt="" className="w-14 h-14 object-cover object-center" />
+              <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                <Maximize2 size={16} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+            </>
           ) : (
             <User size={28} className="text-white" />
           )}
