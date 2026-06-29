@@ -1,0 +1,1 @@
+import{r as e,t}from"./index-D0BlT9lh.js";var n=t();function r({children:t}){return localStorage.getItem(`token`)?t:(0,n.jsx)(e,{to:`/login`,replace:!0})}export{r as default};

@@ -1,10 +1,10 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, User, Mail, Phone, FileText, Pencil, Check, X, AlertCircle, Camera, Globe, Users, EyeOff, Maximize2 } from 'lucide-react';
 
 function ProfilePage() {
   const navigate = useNavigate();
-  const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+  const [storedUser, setStoredUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
   const [name, setName] = useState(storedUser.name || '');
   const [bio, setBio] = useState(localStorage.getItem('bio') || '');
   const [phone, setPhone] = useState(localStorage.getItem('phone') || '');
@@ -15,9 +15,22 @@ function ProfilePage() {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [pendingAvatar, setPendingAvatar] = useState(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const fileRef = useRef(null);
+
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    setAvatar(user.avatar || '');
+    setStoredUser(user);
+  }, []);
+
+  const updateLocalUser = (updates) => {
+    const current = JSON.parse(localStorage.getItem('user') || '{}');
+    const updated = { ...current, ...updates };
+    localStorage.setItem('user', JSON.stringify(updated));
+    setStoredUser(updated);
+    if (updates.avatar) setAvatar(updates.avatar);
+  };
 
   const onSelectFile = async (e) => {
     const file = e.target.files[0];
@@ -33,8 +46,7 @@ function ProfilePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
       const avatarUrl = `https://api.leadgateway.tech${data.avatar}`;
-      setPendingAvatar(avatarUrl);
-      setAvatar(avatarUrl);
+      updateLocalUser({ avatar: avatarUrl });
     } catch (err) { setError(err.message); }
     finally { setUploading(false); }
   };
@@ -56,19 +68,18 @@ function ProfilePage() {
         method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ photoVisibility }),
       });
-const finalAvatar = pendingAvatar || data.avatar || avatar;
-const updatedUser = { ...storedUser, name: data.name, avatar: finalAvatar, photoVisibility };      localStorage.setItem('user', JSON.stringify(updatedUser));
+      updateLocalUser({ name: data.name, photoVisibility });
       localStorage.setItem('bio', bio); localStorage.setItem('phone', phone);
-      setPendingAvatar(null);
       setMsg('Profile updated successfully'); setEditing(false);
     } catch (err) { setError(err.message); }
     finally { setSaving(false); }
   };
 
   const handleCancel = () => {
-    setName(storedUser.name || ''); setBio(localStorage.getItem('bio') || ''); setPhone(localStorage.getItem('phone') || '');
-    setAvatar(storedUser.avatar || ''); setPhotoVisibility(storedUser.photoVisibility || 'everyone');
-    setPendingAvatar(null); setEditing(false); setError(''); setMsg('');
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    setName(user.name || ''); setBio(localStorage.getItem('bio') || ''); setPhone(localStorage.getItem('phone') || '');
+    setAvatar(user.avatar || ''); setPhotoVisibility(user.photoVisibility || 'everyone');
+    setEditing(false); setError(''); setMsg('');
   };
 
   const visibilityOptions = [
