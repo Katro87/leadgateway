@@ -36,6 +36,16 @@ function getTabFromHash() {
   return 'calls';
 }
 
+function digitsOnly(str) {
+  return (str || '').replace(/\D/g, '');
+}
+
+function formatUSNumber(digits) {
+  const d = digits.slice(-10);
+  if (d.length < 10) return digits;
+  return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
+}
+
 function DialerPage() {
   const [activeLeftTab, setActiveLeftTab] = useState(getTabFromHash)
   const [contacts, setContacts] = useState([])
@@ -51,6 +61,13 @@ function DialerPage() {
   const [showSaveModal, setShowSaveModal] = useState(false)
   const [saveForm, setSaveForm] = useState({ name: '', company: '', email: '', phone: '', tags: '' })
   const [loading, setLoading] = useState(true)
+
+  // --- Compose new message state ---
+  const [composeMode, setComposeMode] = useState(false)
+  const [composeNumber, setComposeNumber] = useState('')
+  const [composeConfirmed, setComposeConfirmed] = useState('')
+  const messageInputRef = useRef(null)
+
   const prevTabRef = useRef(activeLeftTab)
   const menuRef = useRef(null)
   const menuTimeout = useRef(null)
@@ -91,18 +108,32 @@ function DialerPage() {
     return () => { window.removeEventListener('hashchange', checkTab); clearInterval(interval); };
   }, []);
 
-  // --- NEW: listen for the events Topbar's search dropdown dispatches ---
-  // Topbar fires these on window after navigating to /dialer?tab=... but
-  // nothing here was listening for them, so the navigation happened but the
-  // actual number/contact was never picked up.
+  // Places an actual call. Accepts an optional override number so the search
+  // dropdown's call icon, the quick-call icon on a message row, and the
+  // manual dial-pad Call button can all funnel through one place.
+  const handleCall = async (overrideNumber) => {
+    const target = (overrideNumber ?? number).trim();
+    if (!target) return;
+    setActiveLeftTab('calls');
+    prevTabRef.current = 'calls';
+    sessionStorage.setItem('dialerTab', 'calls');
+    setSelectedContact(null);
+    setComposeMode(false);
+    setNumber(target);
+    setIsCallActive(true);
+    try {
+      const contactMatch = contacts.find(c => c.phone === target);
+      const newCall = await createCall({ number: target, contactName: contactMatch?.name || 'Unknown', type: 'outgoing', status: 'Calling', duration: 0 });
+      setCalls(prev => [newCall, ...prev]);
+    } catch (err) { console.error(err); }
+  };
+
+  // Listen for the events Topbar's search dropdown dispatches.
   useEffect(() => {
-    const handleDialNumber = (e) => {
+    const handleDialNumberEvent = (e) => {
       const phone = e.detail;
       if (!phone) return;
-      setActiveLeftTab('calls');
-      prevTabRef.current = 'calls';
-      setSelectedContact(null);   // clear any open thread, show the dial pad
-      setNumber(phone);           // put the number straight into the dial field
+      handleCall(phone); // dial immediately, don't just fill the field
     };
 
     const handleOpenMessageContact = (e) => {
@@ -110,17 +141,15 @@ function DialerPage() {
       if (!contact) return;
       setActiveLeftTab('messages');
       prevTabRef.current = 'messages';
-      // Prefer the full saved contact object (with _id, name, etc.) if we have
-      // it locally, so "Edit Contact" / avatar color lookups behave the same
-      // as clicking the contact from the message list itself.
+      setComposeMode(false);
       const matched = contacts.find(c => c.phone === contact.phone) || contact;
       setSelectedContact(matched);
     };
 
-    window.addEventListener('dialNumber', handleDialNumber);
+    window.addEventListener('dialNumber', handleDialNumberEvent);
     window.addEventListener('openMessageContact', handleOpenMessageContact);
     return () => {
-      window.removeEventListener('dialNumber', handleDialNumber);
+      window.removeEventListener('dialNumber', handleDialNumberEvent);
       window.removeEventListener('openMessageContact', handleOpenMessageContact);
     };
   }, [contacts]);
@@ -133,25 +162,30 @@ function DialerPage() {
   const handleMenuEnter = () => { if (menuTimeout.current) clearTimeout(menuTimeout.current); setMenuOpen(true); };
   const handleMenuLeave = () => { menuTimeout.current = setTimeout(() => setMenuOpen(false), 2000); };
   const handleKeyPress = (v) => setNumber((p) => p + v)
-  
-  const handleCall = async () => {
-    if (!number.trim()) return;
-    setIsCallActive(true);
-    try {
-      const newCall = await createCall({ number: number.trim(), contactName: 'Unknown', type: 'outgoing', status: 'Calling', duration: 0 });
-      setCalls(prev => [newCall, ...prev]);
-    } catch (err) { console.error(err); }
-  };
 
   const handleHangup = () => { setIsCallActive(false); setNumber(''); setShowKeypad(false); setIsMuted(false) }
-  const handleDialNumber = (num) => { setNumber(num); setSelectedContact(null) }
 
   const handleSendMessage = async () => {
-    if (!messageText.trim() || !selectedContact) return;
+    const targetPhone = selectedContact?.phone || composeConfirmed;
+    if (!messageText.trim() || !targetPhone) return;
     try {
-      const newMsg = await sendMsg({ number: selectedContact.phone, contactName: selectedContact.name, text: messageText, direction: 'sent' });
+      const contactMatch = contacts.find(c => c.phone === targetPhone);
+      const newMsg = await sendMsg({
+        number: targetPhone,
+        contactName: contactMatch?.name || selectedContact?.name || 'Unknown',
+        text: messageText,
+        direction: 'sent',
+      });
       setMessages(prev => [newMsg, ...prev]);
       setMessageText('');
+
+      if (!selectedContact) {
+        // We were in compose mode — transition straight into the real thread.
+        setSelectedContact(contactMatch || { name: 'Unknown', phone: targetPhone });
+        setComposeMode(false);
+        setComposeNumber('');
+        setComposeConfirmed('');
+      }
     } catch (err) { console.error(err); }
   };
 
@@ -169,6 +203,7 @@ function DialerPage() {
     sessionStorage.setItem('dialerTab', 'messages');
     setActiveLeftTab('messages');
     prevTabRef.current = 'messages';
+    setComposeMode(false);
     setMenuOpen(false);
   };
 
@@ -180,15 +215,26 @@ function DialerPage() {
     try { await deleteMessage(id); setMessages(prev => prev.filter(m => m._id !== id)); } catch (err) { console.error(err); }
   };
 
+  // --- Compose new message handlers ---
+  const startCompose = () => {
+    setSelectedContact(null);
+    setComposeMode(true);
+    setComposeNumber('');
+    setComposeConfirmed('');
+  };
+
+  const handleConfirmComposeNumber = () => {
+    setComposeConfirmed(composeNumber.trim());
+    setTimeout(() => messageInputRef.current?.focus(), 50);
+  };
+
+  const handleRemoveComposeChip = () => {
+    setComposeConfirmed('');
+    setComposeNumber('');
+  };
+
   const getActiveContactCalls = () => selectedContact ? getCallsForContact(selectedContact) : [];
   const getActiveContactMessages = () => selectedContact ? getMessagesForContact(selectedContact) : [];
-
-  const uniqueNumbers = [...new Set(calls.map(c => c.number))];
-  const groupedCalls = uniqueNumbers.map(num => {
-    const numCalls = calls.filter(c => c.number === num);
-    const contact = contacts.find(c => c.phone === num);
-    return { number: num, name: contact?.name || numCalls[0]?.contactName || 'Unknown', calls: numCalls, contact };
-  });
 
   const uniqueMsgNumbers = [...new Set(messages.map(m => m.number))];
   const groupedMessages = uniqueMsgNumbers.map(num => {
@@ -196,6 +242,12 @@ function DialerPage() {
     const contact = contacts.find(c => c.phone === num);
     return { number: num, name: contact?.name || numMsgs[0]?.contactName || 'Unknown', messages: numMsgs, contact };
   });
+
+  const sortedCalls = [...calls].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const activeCallContact = contacts.find(c => c.phone === number);
+  const composeDigits = digitsOnly(composeNumber);
+  const showSendSmsSuggestion = !composeConfirmed && composeDigits.length >= 10;
+  const canTypeMessage = (selectedContact && activeLeftTab === 'messages') || (composeMode && composeConfirmed);
 
   return (
     <div className="flex h-full -m-6">
@@ -205,34 +257,39 @@ function DialerPage() {
           {loading ? (
             <div className="flex items-center justify-center py-12"><Loader2 size={24} className="animate-spin text-blue-400" /></div>
           ) : activeLeftTab === 'calls' ? (
-            groupedCalls.map((g, i) => {
-              const lastCall = g.calls[0];
-              const Icon = typeIcon[lastCall.type] || ArrowUpRight;
+            // One row PER CALL, not grouped by contact — real call history behavior.
+            sortedCalls.map((call) => {
+              const Icon = typeIcon[call.type] || ArrowUpRight;
+              const contact = contacts.find(c => c.phone === call.number);
+              const displayName = contact?.name || call.contactName || 'Unknown';
               return (
-                <button key={i} onClick={() => setSelectedContact(g.contact || { name: g.name, phone: g.number })}
-                  className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-700 transition-colors cursor-pointer ${selectedContact?.phone === g.number ? 'bg-gray-700' : ''}`}>
-                  <div className={`w-10 h-10 ${avatarColors[i % avatarColors.length]} rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0`}>{g.name.charAt(0)}</div>
+                <button
+                  key={call._id}
+                  onClick={() => { setSelectedContact(contact || { name: displayName, phone: call.number }); setComposeMode(false); }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-700 transition-colors cursor-pointer ${selectedContact?.phone === call.number ? 'bg-gray-700' : ''}`}
+                >
+                  <div className={`w-10 h-10 ${getContactAvatarColor({ name: displayName })} rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0`}>{displayName.charAt(0).toUpperCase()}</div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-white truncate">{g.name}</span>
-                      <Icon size={14} className={`${typeColor[lastCall.type]} flex-shrink-0 ml-1`} />
+                      <span className="text-sm font-medium text-white truncate">{displayName}</span>
+                      <Icon size={14} className={`${typeColor[call.type]} flex-shrink-0 ml-1`} />
                     </div>
-                    <p className="text-xs text-gray-400 truncate mt-0.5">{lastCall.status} • {formatTimeAgo(lastCall.createdAt)}</p>
+                    <p className="text-xs text-gray-400 truncate mt-0.5">{call.status} • {formatTimeAgo(call.createdAt)}</p>
                   </div>
                 </button>
-              )
+              );
             })
           ) : activeLeftTab === 'messages' ? (
             <>
-                <button onClick={() => { setSelectedContact(null); }} className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-700 transition-colors cursor-pointer border-b border-gray-700">
-                  <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0"><Plus size={18} className="text-white" /></div>
-                  <span className="text-sm font-medium text-blue-400">+ Send new message</span>
-                </button>
-                {groupedMessages.map((g, i) => {
+              <button onClick={startCompose} className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-700 transition-colors cursor-pointer border-b border-gray-700">
+                <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0"><Plus size={18} className="text-white" /></div>
+                <span className="text-sm font-medium text-blue-400">+ Send new message</span>
+              </button>
+              {groupedMessages.map((g, i) => {
                 const lastMsg = g.messages[0];
                 return (
                   <div key={i} className="group relative">
-                    <button onClick={() => setSelectedContact(g.contact || { name: g.name, phone: g.number })}
+                    <button onClick={() => { setSelectedContact(g.contact || { name: g.name, phone: g.number }); setComposeMode(false); }}
                       className={`w-full flex items-center gap-3 px-4 py-3 pr-10 text-left hover:bg-gray-700 transition-colors cursor-pointer ${selectedContact?.phone === g.number ? 'bg-gray-700' : ''}`}>
                       <div className={`w-10 h-10 ${avatarColors[i % avatarColors.length]} rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0`}>{g.name.charAt(0)}</div>
                       <div className="flex-1 min-w-0">
@@ -243,12 +300,12 @@ function DialerPage() {
                         <p className="text-xs text-gray-400 truncate mt-0.5">{lastMsg.text}</p>
                       </div>
                     </button>
-                    <button onClick={(e) => { e.stopPropagation(); handleDialNumber(g.number); }}
+                    <button onClick={(e) => { e.stopPropagation(); handleCall(g.number); }}
                       className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-white transition-all cursor-pointer bg-gray-700 p-1.5 rounded-full">
                       <Phone size={16} />
                     </button>
                   </div>
-                               )
+                )
               })}
             </>
           ) : (
@@ -259,68 +316,113 @@ function DialerPage() {
 
       {/* MIDDLE PANE */}
       <div className="flex-1 bg-gray-900 flex flex-col">
-        {selectedContact ? (
+        {selectedContact || composeMode ? (
           <>
-            <div className="h-16 border-b border-gray-700 flex items-center justify-between px-5">
-              <div className="flex items-center gap-3">
-                <div className={`w-9 h-9 ${getContactAvatarColor(selectedContact)} rounded-full flex items-center justify-center text-white font-semibold text-sm`}>{getContactInitial(selectedContact)}</div>
-                <div>
-                  <span className="text-white font-medium text-sm">{selectedContact.name || 'Unknown'}</span>
-                  {selectedContact.phone && <p className="text-xs text-gray-400">{selectedContact.phone}</p>}
+            {selectedContact ? (
+              <div className="h-16 border-b border-gray-700 flex items-center justify-between px-5">
+                <div className="flex items-center gap-3">
+                  <div className={`w-9 h-9 ${getContactAvatarColor(selectedContact)} rounded-full flex items-center justify-center text-white font-semibold text-sm`}>{getContactInitial(selectedContact)}</div>
+                  <div>
+                    <span className="text-white font-medium text-sm">{selectedContact.name || 'Unknown'}</span>
+                    {selectedContact.phone && <p className="text-xs text-gray-400">{selectedContact.phone}</p>}
+                  </div>
+                </div>
+                <div className="relative" ref={menuRef} onMouseEnter={handleMenuEnter} onMouseLeave={handleMenuLeave}>
+                  <button onClick={() => setMenuOpen(!menuOpen)} className="text-gray-400 hover:text-white transition-colors cursor-pointer"><MoreVertical size={18} /></button>
+                  {menuOpen && (
+                    <div className="absolute right-0 top-8 w-44 bg-gray-800 border border-gray-700 rounded-xl shadow-lg py-1 z-50">
+                      {contacts.find(c => c.phone === selectedContact.phone) ? (
+                        <button onClick={() => { const c = contacts.find(ct => ct.phone === selectedContact.phone); setSaveForm({ name: c.name || '', company: c.company || '', email: c.email || '', phone: c.phone || '', tags: (c.tags || []).join(', ') }); setShowSaveModal(true); }}
+                          className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center gap-2"><User size={14} /> Edit Contact</button>
+                      ) : (
+                        <button onClick={() => { setSaveForm({ name: '', company: '', email: '', phone: selectedContact.phone || '', tags: '' }); setShowSaveModal(true); }}
+                          className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center gap-2"><UserPlus size={14} /> Save Contact</button>
+                      )}
+                      <button onClick={handleSwitchToMessages}
+                        className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center gap-2"><MessageSquare size={14} /> Message</button>
+                    </div>
+                  )}
                 </div>
               </div>
-              <div className="relative" ref={menuRef} onMouseEnter={handleMenuEnter} onMouseLeave={handleMenuLeave}>
-                <button onClick={() => setMenuOpen(!menuOpen)} className="text-gray-400 hover:text-white transition-colors cursor-pointer"><MoreVertical size={18} /></button>
-                {menuOpen && (
-                  <div className="absolute right-0 top-8 w-44 bg-gray-800 border border-gray-700 rounded-xl shadow-lg py-1 z-50">
-                    {contacts.find(c => c.phone === selectedContact.phone) ? (
-                      <button onClick={() => { const c = contacts.find(ct => ct.phone === selectedContact.phone); setSaveForm({ name: c.name || '', company: c.company || '', email: c.email || '', phone: c.phone || '', tags: (c.tags || []).join(', ') }); setShowSaveModal(true); }}
-                        className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center gap-2"><User size={14} /> Edit Contact</button>
-                    ) : (
-                      <button onClick={() => { setSaveForm({ name: '', company: '', email: '', phone: selectedContact.phone || '', tags: '' }); setShowSaveModal(true); }}
-                        className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center gap-2"><UserPlus size={14} /> Save Contact</button>
+            ) : (
+              // --- Compose-new-message header: type a number, confirm as a chip ---
+              <div className="h-16 border-b border-gray-700 flex items-center px-5 gap-2 relative">
+                {composeConfirmed ? (
+                  <div className="flex items-center gap-2 bg-gray-700 rounded-full pl-2 pr-3 py-1.5">
+                    <button onClick={handleRemoveComposeChip} className="text-gray-400 hover:text-white cursor-pointer"><X size={14} /></button>
+                    <span className="text-sm text-white">{formatUSNumber(digitsOnly(composeConfirmed))}</span>
+                  </div>
+                ) : (
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      autoFocus
+                      value={composeNumber}
+                      onChange={(e) => setComposeNumber(e.target.value)}
+                      placeholder="Type a number"
+                      className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                    />
+                    {showSendSmsSuggestion && (
+                      <button
+                        onClick={handleConfirmComposeNumber}
+                        className="absolute top-full mt-1 left-0 right-0 bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-sm text-blue-400 hover:bg-gray-700 transition-colors cursor-pointer text-left z-10 shadow-lg"
+                      >
+                        Send SMS to {formatUSNumber(composeDigits)}
+                      </button>
                     )}
-                    <button onClick={handleSwitchToMessages}
-                      className="w-full text-left px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center gap-2"><MessageSquare size={14} /> Message</button>
                   </div>
                 )}
               </div>
-            </div>
+            )}
+
             <div className="flex-1 overflow-y-auto p-5 space-y-4">
-              {activeLeftTab === 'messages' ? (
-                getActiveContactMessages().length > 0 ? getActiveContactMessages().sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)).map((msg) => (
-                  <div key={msg._id} className={`flex group ${msg.direction === 'sent' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-xs px-4 py-2 rounded-xl text-sm relative ${msg.direction === 'sent' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-200'}`}>
-                      <p>{msg.text}</p><p className="text-xs mt-1 opacity-70">{formatTimeAgo(msg.createdAt)}</p>
-                    </div>
-                    <button onClick={() => handleDeleteMessage(msg._id)}
-                      className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400 transition-all cursor-pointer ml-1 self-center"><Trash2 size={14} /></button>
-                  </div>
-                )) : <p className="text-center text-gray-500 text-sm">No messages yet</p>
-              ) : activeLeftTab === 'calls' ? (
-                getActiveContactCalls().length > 0 ? getActiveContactCalls().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).map((call) => {
-                  const Icon = typeIcon[call.type] || ArrowUpRight;
-                  return (
-                    <div key={call._id} className="flex items-center justify-between py-2 group">
-                      <div className="flex items-center gap-3">
-                        <Icon size={16} className={typeColor[call.type] || 'text-blue-400'} />
-                        <div><p className="text-sm text-white">{call.status}</p><p className="text-xs text-gray-400">{formatCallTime(call.createdAt)}</p></div>
+              {selectedContact ? (
+                activeLeftTab === 'messages' ? (
+                  getActiveContactMessages().length > 0 ? getActiveContactMessages().sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)).map((msg) => (
+                    <div key={msg._id} className={`flex group ${msg.direction === 'sent' ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-xs px-4 py-2 rounded-xl text-sm relative ${msg.direction === 'sent' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-200'}`}>
+                        <p>{msg.text}</p><p className="text-xs mt-1 opacity-70">{formatTimeAgo(msg.createdAt)}</p>
                       </div>
-                      <button onClick={() => handleDeleteCall(call._id)}
-                        className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400 transition-all cursor-pointer"><Trash2 size={14} /></button>
+                      <button onClick={() => handleDeleteMessage(msg._id)}
+                        className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400 transition-all cursor-pointer ml-1 self-center"><Trash2 size={14} /></button>
                     </div>
-                  )
-                }) : <p className="text-center text-gray-500 text-sm">No calls yet</p>
+                  )) : <p className="text-center text-gray-500 text-sm">No messages yet</p>
+                ) : activeLeftTab === 'calls' ? (
+                  getActiveContactCalls().length > 0 ? getActiveContactCalls().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).map((call) => {
+                    const Icon = typeIcon[call.type] || ArrowUpRight;
+                    return (
+                      <div key={call._id} className="flex items-center justify-between py-2 group">
+                        <div className="flex items-center gap-3">
+                          <Icon size={16} className={typeColor[call.type] || 'text-blue-400'} />
+                          <div><p className="text-sm text-white">{call.status}</p><p className="text-xs text-gray-400">{formatCallTime(call.createdAt)}</p></div>
+                        </div>
+                        <button onClick={() => handleDeleteCall(call._id)}
+                          className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400 transition-all cursor-pointer"><Trash2 size={14} /></button>
+                      </div>
+                    )
+                  }) : <p className="text-center text-gray-500 text-sm">No calls yet</p>
+                ) : (
+                  <p className="text-center text-gray-500 text-sm">No voicemails yet</p>
+                )
               ) : (
-                <p className="text-center text-gray-500 text-sm">No voicemails yet</p>
+                <p className="text-center text-gray-500 text-sm mt-10">
+                  {composeConfirmed ? 'Send a message to start the conversation' : 'Enter a number to send a new message'}
+                </p>
               )}
             </div>
-            {activeLeftTab === 'messages' && (
+
+            {canTypeMessage && (
               <div className="p-4 border-t border-gray-700 flex items-center gap-2">
                 <button className="text-gray-400 hover:text-white cursor-pointer"><Paperclip size={20} /></button>
-                <input type="text" value={messageText} onChange={(e) => setMessageText(e.target.value)}
-                  placeholder="Type a message..." onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                  className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-blue-500" />
+                <input
+                  ref={messageInputRef}
+                  type="text"
+                  value={messageText}
+                  onChange={(e) => setMessageText(e.target.value)}
+                  placeholder="Type a message..."
+                  onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                  className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                />
                 <button onClick={handleSendMessage} className="text-blue-500 hover:text-blue-400 cursor-pointer"><Send size={20} /></button>
               </div>
             )}
@@ -342,7 +444,8 @@ function DialerPage() {
           <div className="flex-1 flex flex-col items-center justify-between py-8 px-4">
             <div className="flex flex-col items-center flex-1 justify-center">
               <div className="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center mb-6"><span className="text-4xl font-bold text-white">{number.slice(-2)}</span></div>
-              <p className="text-gray-400 text-sm">{number}</p>
+              <p className="text-white text-lg font-semibold">{activeCallContact ? activeCallContact.name : number}</p>
+              {activeCallContact && <p className="text-gray-400 text-sm">{number}</p>}
               <p className="text-white text-3xl font-mono mt-3">00:00</p>
             </div>
             <div className="grid grid-cols-3 gap-3 w-full max-w-xs">
@@ -362,7 +465,7 @@ function DialerPage() {
                 className="w-full bg-gray-700 border border-gray-600 rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 text-sm" />
               {number && <button onClick={() => setNumber('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white cursor-pointer"><X size={16} /></button>}
             </div>
-            <button onClick={handleCall} disabled={!number.trim()} className="w-full bg-green-500 hover:bg-green-600 disabled:bg-gray-700 disabled:text-gray-500 py-3 rounded-xl text-white font-semibold transition-colors cursor-pointer flex items-center justify-center gap-2 mb-4"><Phone size={18} /> Call</button>
+            <button onClick={() => handleCall()} disabled={!number.trim()} className="w-full bg-green-500 hover:bg-green-600 disabled:bg-gray-700 disabled:text-gray-500 py-3 rounded-xl text-white font-semibold transition-colors cursor-pointer flex items-center justify-center gap-2 mb-4"><Phone size={18} /> Call</button>
             <div className="flex-1 flex flex-col justify-end">
               <div className="space-y-2">{keys.map((row, i) => (<div key={i} className="flex gap-2">{row.map((k) => (<button key={k} onClick={() => handleKeyPress(k)} className="flex-1 bg-gray-700 hover:bg-gray-600 active:bg-gray-500 rounded-xl py-4 text-xl font-medium text-white transition-colors cursor-pointer">{k}</button>))}</div>))}</div>
               <button className="text-gray-500 hover:text-gray-300 text-xs mt-4 flex items-center justify-center gap-1 cursor-pointer"><ChevronDown size={14} /> Hide keypad</button>
