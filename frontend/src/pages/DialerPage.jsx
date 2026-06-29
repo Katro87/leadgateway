@@ -91,6 +91,40 @@ function DialerPage() {
     return () => { window.removeEventListener('hashchange', checkTab); clearInterval(interval); };
   }, []);
 
+  // --- NEW: listen for the events Topbar's search dropdown dispatches ---
+  // Topbar fires these on window after navigating to /dialer?tab=... but
+  // nothing here was listening for them, so the navigation happened but the
+  // actual number/contact was never picked up.
+  useEffect(() => {
+    const handleDialNumber = (e) => {
+      const phone = e.detail;
+      if (!phone) return;
+      setActiveLeftTab('calls');
+      prevTabRef.current = 'calls';
+      setSelectedContact(null);   // clear any open thread, show the dial pad
+      setNumber(phone);           // put the number straight into the dial field
+    };
+
+    const handleOpenMessageContact = (e) => {
+      const contact = e.detail;
+      if (!contact) return;
+      setActiveLeftTab('messages');
+      prevTabRef.current = 'messages';
+      // Prefer the full saved contact object (with _id, name, etc.) if we have
+      // it locally, so "Edit Contact" / avatar color lookups behave the same
+      // as clicking the contact from the message list itself.
+      const matched = contacts.find(c => c.phone === contact.phone) || contact;
+      setSelectedContact(matched);
+    };
+
+    window.addEventListener('dialNumber', handleDialNumber);
+    window.addEventListener('openMessageContact', handleOpenMessageContact);
+    return () => {
+      window.removeEventListener('dialNumber', handleDialNumber);
+      window.removeEventListener('openMessageContact', handleOpenMessageContact);
+    };
+  }, [contacts]);
+
   const getCallsForContact = (c) => calls.filter(call => call.number === c.phone);
   const getMessagesForContact = (c) => messages.filter(msg => msg.number === c.phone);
   const getContactInitial = (c) => (c.name || '?').charAt(0).toUpperCase();
