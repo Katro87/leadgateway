@@ -130,30 +130,41 @@ function DialerPage() {
   };
 
   useEffect(() => {
-    const handleDialNumberEvent = (e) => {
-      const phone = e.detail;
-      if (!phone) return;
-      handleCall(phone);
-    };
+  const handleDialNumberEvent = (e) => {
+    const phone = e.detail;
+    if (!phone) return;
+    handleCall(phone);
+  };
 
-    const handleOpenMessageContact = (e) => {
-      const contact = e.detail;
-      if (!contact) return;
-      setActiveLeftTab('messages');
-      prevTabRef.current = 'messages';
-      setComposeMode(false);
-      const matched = contacts.find(c => c.phone === contact.phone) || contact;
-      setSelectedContact(matched);
-    };
-      window.removeEventListener('openComposeMessage', handleOpenComposeMessage);
-    window.addEventListener('dialNumber', handleDialNumberEvent);
-    window.addEventListener('openMessageContact', handleOpenMessageContact);
-    return () => {
-      window.removeEventListener('dialNumber', handleDialNumberEvent);
-      window.removeEventListener('openMessageContact', handleOpenMessageContact);
-    };
-  }, [contacts]);
+  const handleOpenMessageContact = (e) => {
+    const contact = e.detail;
+    if (!contact) return;
+    setActiveLeftTab('messages');
+    prevTabRef.current = 'messages';
+    setComposeMode(false);
+    const matched = contacts.find(c => c.phone === contact.phone) || contact;
+    setSelectedContact(matched);
+  };
 
+  const handleOpenComposeMessage = () => {
+    setActiveLeftTab('messages');
+    prevTabRef.current = 'messages';
+    sessionStorage.setItem('dialerTab', 'messages');
+    setSelectedContact(null);
+    setComposeMode(true);
+    setComposeNumber('');
+    setComposeConfirmed('');
+  };
+
+  window.addEventListener('dialNumber', handleDialNumberEvent);
+  window.addEventListener('openMessageContact', handleOpenMessageContact);
+  window.addEventListener('openComposeMessage', handleOpenComposeMessage);
+  return () => {
+    window.removeEventListener('dialNumber', handleDialNumberEvent);
+    window.removeEventListener('openMessageContact', handleOpenMessageContact);
+    window.removeEventListener('openComposeMessage', handleOpenComposeMessage);
+  };
+}, [contacts]);
   const getCallsForContact = (c) => calls.filter(call => call.number === c.phone);
   const getMessagesForContact = (c) => messages.filter(msg => msg.number === c.phone);
   const getContactInitial = (c) => (c.name || '?').charAt(0).toUpperCase();
