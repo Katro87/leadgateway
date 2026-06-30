@@ -40,7 +40,11 @@ function SignupPage() {
       if (!res.ok) throw new Error(data.message);
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data));
-      navigate('/dashboard');
+      if (data.isNewUser) {
+        navigate('/profile?onboarding=true');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       setError(err.message);
     }
