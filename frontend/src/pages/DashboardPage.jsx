@@ -103,8 +103,18 @@ function DashboardPage() {
         <div className="flex gap-3 flex-wrap">
           <button onClick={() => navigate('/dialer')} className="bg-blue-600 hover:bg-blue-700 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer flex items-center gap-2"><Phone size={16} /> New Call</button>
           <button onClick={() => navigate('/contacts')} className="bg-gray-800 hover:bg-gray-700 border border-gray-700 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer flex items-center gap-2"><Plus size={16} /> Add Contact</button>
-          <button onClick={() => navigate('/dialer?tab=messages')} className="bg-gray-800 hover:bg-gray-700 border border-gray-700 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer flex items-center gap-2"><Send size={16} /> Send Message</button>
-        </div>
+<button
+  onClick={() => {
+    sessionStorage.setItem('dialerTab', 'messages');
+    navigate('/dialer?tab=messages');
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('openComposeMessage'));
+    }, 300);
+  }}
+  className="bg-gray-800 hover:bg-gray-700 border border-gray-700 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer flex items-center gap-2"
+>
+  <Send size={16} /> Send Message
+</button>        </div>
       </div>
 
       <div>

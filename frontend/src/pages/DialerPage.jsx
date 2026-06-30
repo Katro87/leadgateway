@@ -145,7 +145,7 @@ function DialerPage() {
       const matched = contacts.find(c => c.phone === contact.phone) || contact;
       setSelectedContact(matched);
     };
-
+      window.removeEventListener('openComposeMessage', handleOpenComposeMessage);
     window.addEventListener('dialNumber', handleDialNumberEvent);
     window.addEventListener('openMessageContact', handleOpenMessageContact);
     return () => {
