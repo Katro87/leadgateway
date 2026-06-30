@@ -6,7 +6,12 @@ import { getMessages as fetchMessages, sendMessage as sendMsg, deleteMessage } f
 
 const typeIcon = { incoming: ArrowDownLeft, outgoing: ArrowUpRight, missed: PhoneMissed }
 const typeColor = { incoming: 'text-green-400', outgoing: 'text-blue-400', missed: 'text-red-400' }
-const keys = [['1', '2', '3'], ['4', '5', '6'], ['7', '8', '9'], ['*', '0', '#']]
+const keys = [
+  { d: '1', l: '' }, { d: '2', l: 'ABC' }, { d: '3', l: 'DEF' },
+  { d: '4', l: 'GHI' }, { d: '5', l: 'JKL' }, { d: '6', l: 'MNO' },
+  { d: '7', l: 'PQRS' }, { d: '8', l: 'TUV' }, { d: '9', l: 'WXYZ' },
+  { d: '*', l: '' }, { d: '0', l: '+' }, { d: '#', l: '' },
+]
 const avatarColors = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-yellow-500', 'bg-pink-500', 'bg-teal-500']
 
 function formatTimeAgo(timestamp) {
@@ -62,7 +67,6 @@ function DialerPage() {
   const [saveForm, setSaveForm] = useState({ name: '', company: '', email: '', phone: '', tags: '' })
   const [loading, setLoading] = useState(true)
 
-  // --- Compose new message state ---
   const [composeMode, setComposeMode] = useState(false)
   const [composeNumber, setComposeNumber] = useState('')
   const [composeConfirmed, setComposeConfirmed] = useState('')
@@ -108,9 +112,6 @@ function DialerPage() {
     return () => { window.removeEventListener('hashchange', checkTab); clearInterval(interval); };
   }, []);
 
-  // Places an actual call. Accepts an optional override number so the search
-  // dropdown's call icon, the quick-call icon on a message row, and the
-  // manual dial-pad Call button can all funnel through one place.
   const handleCall = async (overrideNumber) => {
     const target = (overrideNumber ?? number).trim();
     if (!target) return;
@@ -128,12 +129,11 @@ function DialerPage() {
     } catch (err) { console.error(err); }
   };
 
-  // Listen for the events Topbar's search dropdown dispatches.
   useEffect(() => {
     const handleDialNumberEvent = (e) => {
       const phone = e.detail;
       if (!phone) return;
-      handleCall(phone); // dial immediately, don't just fill the field
+      handleCall(phone);
     };
 
     const handleOpenMessageContact = (e) => {
@@ -180,7 +180,6 @@ function DialerPage() {
       setMessageText('');
 
       if (!selectedContact) {
-        // We were in compose mode — transition straight into the real thread.
         setSelectedContact(contactMatch || { name: 'Unknown', phone: targetPhone });
         setComposeMode(false);
         setComposeNumber('');
@@ -215,7 +214,6 @@ function DialerPage() {
     try { await deleteMessage(id); setMessages(prev => prev.filter(m => m._id !== id)); } catch (err) { console.error(err); }
   };
 
-  // --- Compose new message handlers ---
   const startCompose = () => {
     setSelectedContact(null);
     setComposeMode(true);
@@ -250,33 +248,41 @@ function DialerPage() {
   const canTypeMessage = (selectedContact && activeLeftTab === 'messages') || (composeMode && composeConfirmed);
 
   return (
-    <div className="flex h-full -m-6">
+    // Sized against the viewport, not inherited height — guarantees all
+    // three panes stretch to the bottom of the screen regardless of parent
+    // layout. 4rem = Topbar's h-16. Adjust this if your Topbar height changes.
+    <div className="flex h-[calc(100vh-4rem)] -m-6">
       {/* LEFT PANE */}
-      <div className="w-80 bg-gray-800 border-r border-gray-700 flex flex-col">
+      <div className="w-80 bg-gray-800 border-r border-gray-700 flex flex-col h-full">
         <div className="flex-1 overflow-y-auto">
           {loading ? (
             <div className="flex items-center justify-center py-12"><Loader2 size={24} className="animate-spin text-blue-400" /></div>
           ) : activeLeftTab === 'calls' ? (
-            // One row PER CALL, not grouped by contact — real call history behavior.
             sortedCalls.map((call) => {
               const Icon = typeIcon[call.type] || ArrowUpRight;
               const contact = contacts.find(c => c.phone === call.number);
               const displayName = contact?.name || call.contactName || 'Unknown';
               return (
-                <button
-                  key={call._id}
-                  onClick={() => { setSelectedContact(contact || { name: displayName, phone: call.number }); setComposeMode(false); }}
-                  className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-700 transition-colors cursor-pointer ${selectedContact?.phone === call.number ? 'bg-gray-700' : ''}`}
-                >
-                  <div className={`w-10 h-10 ${getContactAvatarColor({ name: displayName })} rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0`}>{displayName.charAt(0).toUpperCase()}</div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-white truncate">{displayName}</span>
-                      <Icon size={14} className={`${typeColor[call.type]} flex-shrink-0 ml-1`} />
+                <div key={call._id} className="group relative">
+                  <button
+                    onClick={() => { setSelectedContact(contact || { name: displayName, phone: call.number }); setComposeMode(false); }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 pr-10 text-left hover:bg-gray-700 transition-colors cursor-pointer ${selectedContact?.phone === call.number ? 'bg-gray-700' : ''}`}
+                  >
+                    <div className={`w-10 h-10 ${getContactAvatarColor({ name: displayName })} rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0`}>{displayName.charAt(0).toUpperCase()}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-white truncate">{displayName}</span>
+                        <Icon size={14} className={`${typeColor[call.type]} flex-shrink-0 ml-1`} />
+                      </div>
+                      <p className="text-xs text-gray-400 truncate mt-0.5">{call.status} • {formatTimeAgo(call.createdAt)}</p>
                     </div>
-                    <p className="text-xs text-gray-400 truncate mt-0.5">{call.status} • {formatTimeAgo(call.createdAt)}</p>
-                  </div>
-                </button>
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); handleCall(call.number); }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-white transition-all cursor-pointer bg-gray-700 p-1.5 rounded-full"
+                    title="Call">
+                    <Phone size={16} />
+                  </button>
+                </div>
               );
             })
           ) : activeLeftTab === 'messages' ? (
@@ -301,7 +307,8 @@ function DialerPage() {
                       </div>
                     </button>
                     <button onClick={(e) => { e.stopPropagation(); handleCall(g.number); }}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-white transition-all cursor-pointer bg-gray-700 p-1.5 rounded-full">
+                      className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-white transition-all cursor-pointer bg-gray-700 p-1.5 rounded-full"
+                      title="Call">
                       <Phone size={16} />
                     </button>
                   </div>
@@ -315,11 +322,11 @@ function DialerPage() {
       </div>
 
       {/* MIDDLE PANE */}
-      <div className="flex-1 bg-gray-900 flex flex-col">
+      <div className="flex-1 bg-gray-900 flex flex-col h-full">
         {selectedContact || composeMode ? (
           <>
             {selectedContact ? (
-              <div className="h-16 border-b border-gray-700 flex items-center justify-between px-5">
+              <div className="h-16 border-b border-gray-700 flex items-center justify-between px-5 flex-shrink-0">
                 <div className="flex items-center gap-3">
                   <div className={`w-9 h-9 ${getContactAvatarColor(selectedContact)} rounded-full flex items-center justify-center text-white font-semibold text-sm`}>{getContactInitial(selectedContact)}</div>
                   <div>
@@ -345,8 +352,7 @@ function DialerPage() {
                 </div>
               </div>
             ) : (
-              // --- Compose-new-message header: type a number, confirm as a chip ---
-              <div className="h-16 border-b border-gray-700 flex items-center px-5 gap-2 relative">
+              <div className="h-16 border-b border-gray-700 flex items-center px-5 gap-2 relative flex-shrink-0">
                 {composeConfirmed ? (
                   <div className="flex items-center gap-2 bg-gray-700 rounded-full pl-2 pr-3 py-1.5">
                     <button onClick={handleRemoveComposeChip} className="text-gray-400 hover:text-white cursor-pointer"><X size={14} /></button>
@@ -412,7 +418,7 @@ function DialerPage() {
             </div>
 
             {canTypeMessage && (
-              <div className="p-4 border-t border-gray-700 flex items-center gap-2">
+              <div className="p-4 border-t border-gray-700 flex items-center gap-2 flex-shrink-0">
                 <button className="text-gray-400 hover:text-white cursor-pointer"><Paperclip size={20} /></button>
                 <input
                   ref={messageInputRef}
@@ -439,7 +445,7 @@ function DialerPage() {
       </div>
 
       {/* RIGHT PANE - Dialer */}
-      <div className="w-80 bg-gray-800 border-l border-gray-700 flex flex-col">
+      <div className="w-80 bg-gray-800 border-l border-gray-700 flex flex-col h-full">
         {isCallActive ? (
           <div className="flex-1 flex flex-col items-center justify-between py-8 px-4">
             <div className="flex flex-col items-center flex-1 justify-center">
@@ -458,18 +464,45 @@ function DialerPage() {
             <button onClick={handleHangup} className="w-16 h-16 bg-red-600 hover:bg-red-700 rounded-full flex items-center justify-center mt-6 cursor-pointer"><PhoneOff size={28} className="text-white" /></button>
           </div>
         ) : (
-          <div className="flex-1 flex flex-col p-4">
-            <div className="text-center mb-4"><p className="text-gray-500 text-xs">Call as</p><p className="text-gray-300 text-sm">+1 (555) 000-0000</p></div>
-            <div className="relative mb-4">
+          <div className="flex-1 flex flex-col p-5 overflow-y-auto">
+            <div className="text-center mb-4">
+              <p className="text-gray-500 text-xs">Call as</p>
+              <p className="text-gray-300 text-sm">+1 (555) 000-0000</p>
+            </div>
+
+            <div className="relative mb-5">
               <input type="text" value={number} onChange={(e) => setNumber(e.target.value)} placeholder="Enter a name or number"
-                className="w-full bg-gray-700 border border-gray-600 rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 text-sm" />
-              {number && <button onClick={() => setNumber('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white cursor-pointer"><X size={16} /></button>}
+                className="w-full bg-gray-700 border border-gray-600 rounded-full px-5 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 text-sm text-center" />
+              {number && <button onClick={() => setNumber('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white cursor-pointer"><X size={16} /></button>}
             </div>
-            <button onClick={() => handleCall()} disabled={!number.trim()} className="w-full bg-green-500 hover:bg-green-600 disabled:bg-gray-700 disabled:text-gray-500 py-3 rounded-xl text-white font-semibold transition-colors cursor-pointer flex items-center justify-center gap-2 mb-4"><Phone size={18} /> Call</button>
-            <div className="flex-1 flex flex-col justify-end">
-              <div className="space-y-2">{keys.map((row, i) => (<div key={i} className="flex gap-2">{row.map((k) => (<button key={k} onClick={() => handleKeyPress(k)} className="flex-1 bg-gray-700 hover:bg-gray-600 active:bg-gray-500 rounded-xl py-4 text-xl font-medium text-white transition-colors cursor-pointer">{k}</button>))}</div>))}</div>
-              <button className="text-gray-500 hover:text-gray-300 text-xs mt-4 flex items-center justify-center gap-1 cursor-pointer"><ChevronDown size={14} /> Hide keypad</button>
+
+            {/* Circular Google-Voice-style keypad */}
+            <div className="grid grid-cols-3 gap-y-3 gap-x-2 justify-items-center mb-6">
+              {keys.map((k) => (
+                <button
+                  key={k.d}
+                  onClick={() => handleKeyPress(k.d)}
+                  className="w-16 h-16 rounded-full bg-gray-700 hover:bg-gray-600 active:bg-gray-500 transition-colors cursor-pointer flex flex-col items-center justify-center"
+                >
+                  <span className="text-xl font-medium text-white leading-none">{k.d}</span>
+                  {k.l && <span className="text-[9px] text-gray-400 tracking-wider mt-0.5">{k.l}</span>}
+                </button>
+              ))}
             </div>
+
+            <div className="flex justify-center mb-2">
+              <button
+                onClick={() => handleCall()}
+                disabled={!number.trim()}
+                className="w-16 h-16 rounded-full bg-green-500 hover:bg-green-600 disabled:bg-gray-700 disabled:text-gray-500 text-white flex items-center justify-center transition-colors cursor-pointer shadow-lg"
+              >
+                <Phone size={26} />
+              </button>
+            </div>
+
+            <button className="text-gray-500 hover:text-gray-300 text-xs flex items-center justify-center gap-1 cursor-pointer mt-auto pt-4">
+              <ChevronDown size={14} /> Hide keypad
+            </button>
           </div>
         )}
       </div>
