@@ -300,7 +300,7 @@ function DialerPage() {
             <>
               <button onClick={startCompose} className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-700 transition-colors cursor-pointer border-b border-gray-700">
                 <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0"><Plus size={18} className="text-white" /></div>
-                <span className="text-sm font-medium text-blue-400">+ Send new message</span>
+                <span className="text-sm font-medium text-blue-400"> Send new message</span>
               </button>
               {groupedMessages.map((g, i) => {
                 const lastMsg = g.messages[0];
