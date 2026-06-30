@@ -1,6 +1,22 @@
 import { cacheData, getCachedData } from '../utils/cache';
 
 const API_URL = 'https://api.leadgateway.tech/api';
+let isServerDown = false;
+let recoveryInterval = null;
+
+const checkServerRecovery = () => {
+  fetch(`${API_URL}/health`)
+    .then(r => r.json())
+    .then(data => {
+      if (data.status === 'ok') {
+        isServerDown = false;
+        clearInterval(recoveryInterval);
+        recoveryInterval = null;
+        window.location.reload();
+      }
+    })
+    .catch(() => {});
+};
 
 export const apiFetch = async (endpoint, options = {}) => {
   const token = localStorage.getItem('token');
@@ -32,9 +48,19 @@ export const apiFetch = async (endpoint, options = {}) => {
 
     if (isGet) cacheData(cacheKey, data);
 
+    // Server is back — clear down state
+    if (isServerDown) {
+      isServerDown = false;
+      if (recoveryInterval) { clearInterval(recoveryInterval); recoveryInterval = null; }
+    }
+
     return data;
   } catch (error) {
     if (isGet && (error.name === 'TypeError' || error.message === 'Failed to fetch')) {
+      if (!isServerDown) {
+        isServerDown = true;
+        recoveryInterval = setInterval(checkServerRecovery, 5000);
+      }
       const cached = getCachedData(cacheKey);
       if (cached) return cached;
     }
