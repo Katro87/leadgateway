@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { loginUser } from '../api/auth';
 import { ArrowLeft, Mail, Lock, Eye, EyeOff, AlertCircle, LogIn } from 'lucide-react';
+import GoogleButton from '../components/GoogleButton';
+
 
 function LoginPage() {
   const [email, setEmail] = useState('');
@@ -24,6 +26,23 @@ function LoginPage() {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async (response) => {
+    try {
+      const res = await fetch('https://api.leadgateway.tech/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential: response.credential }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data));
+      navigate('/dashboard');
+    } catch (err) {
+      setError(err.message);
     }
   };
 
@@ -50,6 +69,17 @@ function LoginPage() {
               <AlertCircle size={16} /> {error}
             </div>
           )}
+
+          {/* Google Login Button */}
+          <div className="mb-5">
+            <GoogleButton onSuccess={handleGoogleLogin} />
+          </div>
+
+          <div className="flex items-center gap-3 mb-5">
+            <div className="flex-1 h-px bg-gray-700"></div>
+            <span className="text-xs text-gray-500">or</span>
+            <div className="flex-1 h-px bg-gray-700"></div>
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
