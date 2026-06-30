@@ -13,11 +13,20 @@ function ContactsPage() {
   const navigate = useNavigate()
 
   useEffect(() => { loadContacts(); }, []);
-  useEffect(() => {
-    const hash = window.location.hash;
-    const match = hash.match(/search=([^&]+)/);
-    if (match) setSearch(decodeURIComponent(match[1]));
-  }, []);
+useEffect(() => {
+  const hash = window.location.hash;
+  const match = hash.match(/search=([^&]+)/);
+  if (match) setSearch(decodeURIComponent(match[1]));
+}, []);
+
+// NEW: auto-open the Add Contact modal when arriving from Dashboard's
+// "Add Contact" quick action button.
+useEffect(() => {
+  if (sessionStorage.getItem('openAddContactModal') === 'true') {
+    setShowModal(true);
+    sessionStorage.removeItem('openAddContactModal'); // one-time trigger, don't reopen on every visit
+  }
+}, []);
 
   const loadContacts = async () => {
     try {
