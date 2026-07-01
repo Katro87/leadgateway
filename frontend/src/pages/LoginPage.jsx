@@ -34,8 +34,7 @@ function LoginPage() {
       const res = await fetch('https://api.leadgateway.tech/api/auth/google', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ credential: response.credential }),
-      });
+body: JSON.stringify({ credential: response.credential, action: 'login' }),      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
       localStorage.setItem('token', data.token);
