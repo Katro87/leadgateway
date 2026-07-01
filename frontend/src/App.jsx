@@ -16,6 +16,7 @@ const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
 const DashboardLayout = lazy(() => import('./layouts/DashboardLayout'))
 const ProtectedRoute = lazy(() => import('./components/ProtectedRoute'))
 const ProfilePage = lazy(() => import('./pages/ProfilePage'))
+import PublicRoute from './components/PublicRoute'
 
 function App() {
   return (
@@ -23,12 +24,15 @@ function App() {
       <Suspense fallback={<div className="bg-gray-900 min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div></div>}>
         <Routes>
           <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/login-2fa" element={<Login2FAPage />} />
-          <Route path="/signup" element={<SignupPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
 
+          {/* Auth pages — redirect to dashboard if already logged in */}
+          <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+          <Route path="/login-2fa" element={<PublicRoute><Login2FAPage /></PublicRoute>} />
+          <Route path="/signup" element={<PublicRoute><SignupPage /></PublicRoute>} />
+          <Route path="/forgot-password" element={<PublicRoute><ForgotPasswordPage /></PublicRoute>} />
+          <Route path="/reset-password/:token" element={<PublicRoute><ResetPasswordPage /></PublicRoute>} />
+
+          {/* Protected pages — redirect to login if not logged in */}
           <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/contacts" element={<ContactsPage />} />
