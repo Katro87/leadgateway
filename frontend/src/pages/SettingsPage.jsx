@@ -61,6 +61,11 @@ function SettingsPage() {
   const [hasChanges, setHasChanges] = useState(false)
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState(null)
+  const [show2FAModal, setShow2FAModal] = useState(false)
+const [qrCode, setQrCode] = useState('')
+const [twoFactorSecret, setTwoFactorSecret] = useState('')
+const [twoFactorCode, setTwoFactorCode] = useState('')
+const [twoFactorError, setTwoFactorError] = useState('')
 
   const showToast = (message, type) => {
     setToast({ message, type })
@@ -113,7 +118,61 @@ function SettingsPage() {
     setTimezone(localStorage.getItem('timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone)
     setHasChanges(false)
   }
+ const setup2FA = async () => {
+  setShow2FAModal(true);
+  setQrCode('');
+  setTwoFactorCode('');
+  setTwoFactorError('');
+  try {
+    const token = localStorage.getItem('token');
+    const res = await fetch('https://api.leadgateway.tech/api/2fa/setup', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message);
+    setQrCode(data.qrCode);
+    setTwoFactorSecret(data.secret);
+  } catch (err) {
+    setTwoFactorError(err.message);
+  }
+};
 
+const verify2FA = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    const res = await fetch('https://api.leadgateway.tech/api/2fa/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ token: twoFactorCode }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message);
+    setTwoFactor(true);
+    setShow2FAModal(false);
+    showToast('2FA enabled successfully', 'success');
+  } catch (err) {
+    setTwoFactorError(err.message);
+  }
+};
+
+const disable2FA = async () => {
+  const code = prompt('Enter your 2FA code to disable:');
+  if (!code) return;
+  try {
+    const token = localStorage.getItem('token');
+    const res = await fetch('https://api.leadgateway.tech/api/2fa/disable', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ token: code }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message);
+    setTwoFactor(false);
+    showToast('2FA disabled', 'success');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+};
   const tabs = [
     { id: 'password', name: 'Password', icon: Key },
     { id: 'notifications', name: 'Notifications', icon: Bell },
@@ -208,27 +267,80 @@ function SettingsPage() {
       )}
 
       {activeTab === 'security' && (
-        <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 space-y-5">
-          <h3 className="text-lg font-semibold text-white">Security</h3>
-          <div className="flex items-center justify-between py-2">
-            <div>
-              <p className="text-sm text-gray-300">Two-factor authentication</p>
-              <p className="text-xs text-gray-500">Add an extra layer of security</p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" checked={twoFactor} onChange={(e) => { setTwoFactor(e.target.checked); markChanged() }} className="sr-only peer" />
-              <div className="w-9 h-5 bg-gray-600 peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
-            </label>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Session timeout (minutes)</label>
-            <select value={sessionTimeout} onChange={(e) => { setSessionTimeout(e.target.value); markChanged() }}
-              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
-              {['15', '30', '60', '120'].map(t => <option key={t} value={t}>{t} minutes</option>)}
-            </select>
+  <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 space-y-5">
+    <h3 className="text-lg font-semibold text-white">Security</h3>
+    
+    {/* 2FA Section */}
+    <div className="space-y-4">
+      <div className="flex items-center justify-between py-2">
+        <div>
+          <p className="text-sm text-gray-300">Two-factor authentication</p>
+          <p className="text-xs text-gray-500">Add an extra layer of security</p>
+        </div>
+        {!twoFactor ? (
+          <button onClick={setup2FA}
+            className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer">
+            Enable
+          </button>
+        ) : (
+          <button onClick={disable2FA}
+            className="bg-red-600/30 hover:bg-red-600/50 text-red-400 px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer">
+            Disable
+          </button>
+        )}
+      </div>
+
+      {/* 2FA Setup Modal */}
+      {show2FAModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShow2FAModal(false)}>
+          <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-white mb-4">Setup Two-Factor Authentication</h3>
+            
+            {!qrCode ? (
+              <div className="text-center py-4">
+                <Loader2 size={24} className="animate-spin text-blue-400 mx-auto mb-2" />
+                <p className="text-sm text-gray-400">Generating QR code...</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-sm text-gray-400">Scan this QR code with Google Authenticator or any TOTP app.</p>
+                <img src={qrCode} alt="QR Code" className="mx-auto rounded-lg" />
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Or enter this code manually:</p>
+                  <code className="text-xs text-blue-400 bg-gray-700 px-3 py-1 rounded break-all block">{twoFactorSecret}</code>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">Enter 6-digit code</label>
+                  <input type="text" value={twoFactorCode} onChange={(e) => setTwoFactorCode(e.target.value)}
+                    placeholder="000000" maxLength={6}
+                    className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-white text-center tracking-widest focus:outline-none focus:border-blue-500" />
+                  {twoFactorError && <p className="text-red-400 text-xs mt-1">{twoFactorError}</p>}
+                </div>
+                <button onClick={verify2FA} disabled={twoFactorCode.length !== 6}
+                  className="w-full bg-blue-600 hover:bg-blue-700 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer disabled:opacity-50">
+                  Verify & Enable
+                </button>
+              </div>
+            )}
+            <button onClick={() => setShow2FAModal(false)}
+              className="w-full mt-3 bg-gray-700 hover:bg-gray-600 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer">
+              Cancel
+            </button>
           </div>
         </div>
       )}
+    </div>
+
+    {/* Session Timeout */}
+    <div>
+      <label className="block text-sm font-medium text-gray-300 mb-2">Session timeout (minutes)</label>
+      <select value={sessionTimeout} onChange={(e) => { setSessionTimeout(e.target.value); markChanged() }}
+        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
+        {['15', '30', '60', '120'].map(t => <option key={t} value={t}>{t} minutes</option>)}
+      </select>
+    </div>
+  </div>
+)}
 
       {activeTab === 'billing' && (
         <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 space-y-5">
