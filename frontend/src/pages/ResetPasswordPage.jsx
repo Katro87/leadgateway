@@ -1,23 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 
 function ResetPasswordPage() {
   const navigate = useNavigate();
   const [password, setPassword] = useState('');
-  const [token, setToken] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const hash = window.location.hash;
-    const parts = hash.split('/');
-    const tokenIndex = parts.indexOf('reset-password');
-    if (tokenIndex !== -1 && parts[tokenIndex + 1]) {
-      setToken(parts[tokenIndex + 1]);
-    }
-  }, []);
-
+ const { token } = useParams();
   const handleReset = async (e) => {
     e.preventDefault();
     if (!token) { setError('Invalid reset link'); return; }
