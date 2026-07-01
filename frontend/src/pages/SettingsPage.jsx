@@ -1,6 +1,5 @@
 import { useState } from 'react'
-import { Key, Bell, Sliders, CreditCard, Check, X, AlertCircle, Eye, EyeOff, Globe, Clock, Shield } from 'lucide-react'
-
+import { Key, Bell, Sliders, CreditCard, Check, X, AlertCircle, Eye, EyeOff, Globe, Clock, Shield, Loader2 } from 'lucide-react'
 function Toast({ message, type, onClose }) {
   return (
     <div className={`fixed top-6 right-6 z-50 px-5 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-slide-in ${
