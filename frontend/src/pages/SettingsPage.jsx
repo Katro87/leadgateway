@@ -147,6 +147,9 @@ const verify2FA = async () => {
     const data = await res.json();
     if (!res.ok) throw new Error(data.message);
     setTwoFactor(true);
+    if (data.recoveryCodes) {
+  alert('Save these recovery codes:\n\n' + data.recoveryCodes.join('\n') + '\n\nThese can be used if you lose access to your authenticator app.');
+}
     setShow2FAModal(false);
     showToast('2FA enabled successfully', 'success');
   } catch (err) {
